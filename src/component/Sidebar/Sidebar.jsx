@@ -6,7 +6,7 @@ const sidebarItems = [
   { name: 'Testimonials', href: '/testimonials', icon: 'ri-chat-quote-line' },
   { name: 'Model Manager', href: '/blog', icon: 'ri-article-line' },
   { name: 'Event Display', href: '/gallery', icon: 'ri-image-line' },
-  { name: 'Newsletter Subscribers', href: '/newsletter', icon: 'ri-mail-line' },
+  // { name: 'Newsletter Subscribers', href: '/newsletter', icon: 'ri-mail-line' },
   { name: 'Event Manager', href: '/events', icon: 'ri-calendar-event-line' },
   { name: 'Contact Me', href: '/ContactMe', icon: 'ri-contacts-line' },
   { name: 'Logout', href: '/', icon: 'ri-logout-box-line' },

@@ -12,6 +12,7 @@ const Auth = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -55,6 +56,7 @@ const Auth = () => {
           const user = childSnap.val();
           if (user.email === email && user.password === password) {
             foundUser = user;
+            return true; // break out of forEach
           }
         });
       }
@@ -112,6 +114,7 @@ const Auth = () => {
     setSignupErrors(errors);
 
     if (!errors.name && !errors.email && !errors.password && !errors.confirmPassword) {
+      setSignupLoading(true);
       try {
         const res = await push(ref(database, 'users'), {
           name: signupForm.name,
@@ -140,6 +143,7 @@ const Auth = () => {
           text: 'Could not create account. Please try again.',
         });
       }
+      setSignupLoading(false);
     }
   };
 
@@ -150,7 +154,6 @@ const Auth = () => {
       setLoginForm(prev => ({ ...prev, password: value }));
     }
   };
-
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
@@ -308,7 +311,19 @@ const Auth = () => {
                 </div>
                 {signupErrors.confirmPassword && <p className="text-red-500 text-sm mt-1">{signupErrors.confirmPassword}</p>}
               </div>
-              <button type="submit" className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Sign Up</button>
+              <button
+                type="submit"
+                className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center"
+                disabled={signupLoading}
+              >
+                {signupLoading && (
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                )}
+                {signupLoading ? 'Creating Account...' : 'Sign Up'}
+              </button>
             </form>
           )}
 
