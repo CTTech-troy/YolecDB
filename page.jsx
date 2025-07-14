@@ -7,7 +7,7 @@ const statsData = [
 	{
 		title: 'Total Visitors',
 		value: 15847,
-		change: 12.5,
+		change: 19.5,
 		icon: 'ri-user-line',
 		color: 'bg-blue-600',
 	},

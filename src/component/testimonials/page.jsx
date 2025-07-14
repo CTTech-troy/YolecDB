@@ -1,58 +1,79 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { database } from '../../../firebase';
+import { ref, onValue, update, remove } from 'firebase/database';
 import Button from '../../ui/Button';
 import Card from '../../ui/Card';
+import Swal from 'sweetalert2';
 
-// Removed TypeScript interfaces and types
-
-const mockTestimonials = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah@example.com',
-    photo: 'https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20of%20a%20smiling%20businesswoman%20with%20brown%20hair%2C%20clean%20white%20background%2C%20corporate%20photography%20style%2C%20friendly%20and%20approachable%20expression&width=60&height=60&seq=user1&orientation=squarish',
-    content: 'Excellent service! The team was professional and delivered exactly what we needed. Highly recommend their expertise.',
-    rating: 5,
-    date: '2024-01-15',
-    status: 'approved'
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'michael@example.com',
-    photo: 'https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20of%20a%20confident%20asian%20businessman%20wearing%20glasses%2C%20clean%20white%20background%2C%20corporate%20photography%20style%2C%20professional%20appearance&width=60&height=60&seq=user2&orientation=squarish',
-    content: 'Outstanding results! The project was completed on time and exceeded our expectations. Great communication throughout.',
-    rating: 5,
-    date: '2024-01-12',
-    status: 'approved'
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    email: 'emily@example.com',
-    photo: 'https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20of%20a%20smiling%20latina%20businesswoman%20with%20dark%20hair%2C%20clean%20white%20background%2C%20corporate%20photography%20style%2C%20warm%20and%20professional%20expression&width=60&height=60&seq=user3&orientation=squarish',
-    content: 'Very satisfied with the service. The team was responsive and provided excellent support. Will definitely work with them again.',
-    rating: 4,
-    date: '2024-01-10',
-    status: 'pending'
-  },
-  {
-    id: '4',
-    name: 'David Wilson',
-    email: 'david@example.com',
-    photo: 'https://readdy.ai/api/search-image?query=professional%20headshot%20portrait%20of%20a%20middle-aged%20businessman%20with%20grey%20hair%2C%20clean%20white%20background%2C%20corporate%20photography%20style%2C%20confident%20and%20trustworthy%20appearance&width=60&height=60&seq=user4&orientation=squarish',
-    content: 'Good experience overall. The final product met our requirements and the process was smooth.',
-    rating: 4,
-    date: '2024-01-08',
-    status: 'approved'
-  }
+const pastelColors = [
+  "#A3CEF1", "#F7D6E0", "#B8F2E6", "#F6EAC2", "#D0E6A5", "#FFD6BA", "#C3B1E1", "#FFB7B2"
 ];
 
+function getPastelColor(name) {
+  if (!name) return pastelColors[0];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return pastelColors[Math.abs(hash) % pastelColors.length];
+}
+
+function getAvatar(name) {
+  const letter = name ? name.trim()[0].toUpperCase() : "U";
+  const bgColor = getPastelColor(name);
+  const svg = `
+    <svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="256" cy="256" r="256" fill="${bgColor}" />
+      <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" font-size="260" font-family="sans-serif" fill="#fff" font-weight="bold">${letter}</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
+}
+
 export default function TestimonialsPage() {
-  const [testimonials, setTestimonials] = useState(mockTestimonials);
+  const [testimonials, setTestimonials] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const testimonialsRef = ref(database, 'testimonials');
+    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const loadedTestimonials = Object.keys(data).map((key) => {
+          const item = data[key];
+          const formattedDate = item.timestamp
+            ? new Date(item.timestamp).toLocaleDateString() + ' ' + new Date(item.timestamp).toLocaleTimeString()
+            : '';
+          return {
+            id: key,
+            name: item.name || '',
+            email: item.email || '',
+            company: item.company || '',
+            content: item.testimonial || '',
+            rating: item.rating || 0,
+            date: formattedDate,
+            status: item.status || 'pending',
+            photo: item.photo || ''
+          };
+        });
+        setTestimonials(loadedTestimonials);
+      } else {
+        setTestimonials([]);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  function truncateContent(content) {
+    if (typeof content !== 'string') return '';
+    const limit = 80;
+    return content.length > limit ? content.slice(0, limit) + '...' : content;
+  }
 
   const filteredTestimonials = testimonials.filter(testimonial => {
     const matchesSearch = testimonial.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -67,15 +88,36 @@ export default function TestimonialsPage() {
   const paginatedTestimonials = filteredTestimonials.slice(startIndex, startIndex + itemsPerPage);
 
   const updateStatus = (id, status) => {
-    setTestimonials(testimonials.map(t =>
-      t.id === id ? { ...t, status } : t
-    ));
+    const testimonialRef = ref(database, `testimonials/${id}`);
+    update(testimonialRef, { status })
+      .then(() => {
+        Swal.fire({ icon: 'success', title: 'Status Updated', text: `Testimonial status changed to ${status}.`, timer: 1500, showConfirmButton: false });
+      })
+      .catch(() => {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update status.' });
+      });
   };
 
   const deleteTestimonial = (id) => {
-    if (window.confirm('Are you sure you want to delete this testimonial?')) {
-      setTestimonials(testimonials.filter(t => t.id !== id));
-    }
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "This will permanently delete the testimonial.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'Cancel',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        const testimonialRef = ref(database, `testimonials/${id}`);
+        remove(testimonialRef)
+          .then(() => {
+            Swal.fire('Deleted!', 'The testimonial has been deleted.', 'success');
+          })
+          .catch(() => {
+            Swal.fire('Error', 'Failed to delete testimonial.', 'error');
+          });
+      }
+    });
   };
 
   const getStatusColor = (status) => {
@@ -88,6 +130,7 @@ export default function TestimonialsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header and search/filter UI */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Testimonials</h1>
@@ -118,8 +161,9 @@ export default function TestimonialsPage() {
       </div>
 
       <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        {/* Desktop Table */}
+        <div className="overflow-x-auto max-w-full hidden md:block">
+          <table className="w-full max-w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">User</th>
@@ -131,121 +175,163 @@ export default function TestimonialsPage() {
               </tr>
             </thead>
             <tbody>
-              {paginatedTestimonials.map((testimonial) => (
-                <tr key={testimonial.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={testimonial.photo}
-                        alt={testimonial.name}
-                        className="w-10 h-10 rounded-full object-cover object-top"
-                      />
-                      <div>
-                        <div className="font-medium text-gray-900">{testimonial.name}</div>
-                        <div className="text-sm text-gray-500">{testimonial.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-4">
-                    <p className="text-sm text-gray-700 line-clamp-2 max-w-xs">
-                      {testimonial.content}
-                    </p>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: 5 }, (_, i) => (
-                        <i
-                          key={i}
-                          className={`ri-star-${i < testimonial.rating ? 'fill' : 'line'} text-yellow-400`}
-                        ></i>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="py-4 px-4 text-sm text-gray-600">
-                    {testimonial.date}
-                  </td>
-                  <td className="py-4 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(testimonial.status)}`}>
-                      {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <div className="flex items-center gap-2">
-                      {testimonial.status === 'pending' && (
-                        <>
-                          <Button
-                            size="sm"
-                            onClick={() => updateStatus(testimonial.id, 'approved')}
-                            className="whitespace-nowrap"
-                          >
-                            <i className="ri-check-line mr-1"></i>
-                            Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            onClick={() => updateStatus(testimonial.id, 'rejected')}
-                            className="whitespace-nowrap"
-                          >
-                            <i className="ri-close-line mr-1"></i>
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                      {testimonial.status === 'approved' && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="whitespace-nowrap"
-                        >
-                          <i className="ri-external-link-line mr-1"></i>
-                          Push to Website
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => deleteTestimonial(testimonial.id)}
-                      >
-                        <i className="ri-delete-bin-line"></i>
-                      </Button>
-                    </div>
-                  </td>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-gray-500">Loading testimonials...</td>
                 </tr>
-              ))}
+              ) : filteredTestimonials.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-10 text-center text-gray-500">No testimonials found.</td>
+                </tr>
+              ) : (
+                paginatedTestimonials.map((testimonial) => (
+                  <tr key={testimonial.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-3">
+                        {testimonial.photo ? (
+                          <img src={testimonial.photo} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" />
+                        ) : (
+                          <img src={getAvatar(testimonial.name)} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" />
+                        )}
+                        <div>
+                          <div className="font-medium text-gray-900">{testimonial.name}</div>
+                          {testimonial.email && <div className="text-sm text-gray-500">{testimonial.email}</div>}
+                          {testimonial.company && <div className="text-sm text-gray-400">{testimonial.company}</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-sm text-gray-700 line-clamp-2 max-w-xs">{truncateContent(testimonial.content)}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <i key={i} className={`ri-star-${i < testimonial.rating ? 'fill' : 'line'} text-yellow-400`}></i>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-600">{testimonial.date}</td>
+                    <td className="py-4 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(testimonial.status)}`}>
+                        {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-2">
+                        {testimonial.status === 'pending' && (
+                          <>
+                            <Button size="sm" onClick={() => updateStatus(testimonial.id, 'approved')} className="whitespace-nowrap">
+                              <i className="ri-check-line mr-1"></i>Approve
+                            </Button>
+                            <Button size="sm" variant="danger" onClick={() => updateStatus(testimonial.id, 'rejected')} className="whitespace-nowrap">
+                              <i className="ri-close-line mr-1"></i>Reject
+                            </Button>
+                          </>
+                        )}
+                        {testimonial.status === 'approved' && (
+                          <Button size="sm" variant="secondary" className="whitespace-nowrap">
+                            <i className="ri-external-link-line mr-1"></i>Push to Website
+                          </Button>
+                        )}
+                        <Button size="sm" variant="danger" onClick={() => deleteTestimonial(testimonial.id)}>
+                          <i className="ri-delete-bin-line"></i>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
+        {/* Mobile/Tablet Cards */}
+        <div className="md:hidden space-y-4">
+          {loading ? (
+            <div className="py-10 text-center text-gray-500">Loading testimonials...</div>
+          ) : filteredTestimonials.length === 0 ? (
+            <div className="py-10 text-center text-gray-500">No testimonials found.</div>
+          ) : (
+            paginatedTestimonials.map((testimonial) => (
+              <div key={testimonial.id} className="border rounded-lg p-4 bg-white shadow-sm">
+                <div className="flex items-center gap-3 mb-3">
+                  {testimonial.photo ? (
+                    <img src={testimonial.photo} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" />
+                  ) : (
+                    <img src={getAvatar(testimonial.name)} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" />
+                  )}
+                  <div>
+                    <div className="font-bold text-gray-900">User</div>
+                    <div className="font-medium text-gray-900">{testimonial.name}</div>
+                    {testimonial.email && <div className="text-sm text-gray-500">{testimonial.email}</div>}
+                    {testimonial.company && <div className="text-sm text-gray-400">{testimonial.company}</div>}
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <span className="font-bold text-gray-700">Content: </span>
+                  <span className="text-gray-700">{truncateContent(testimonial.content)}</span>
+                </div>
+                <div className="mb-2">
+                  <span className="font-bold text-gray-700">Rating: </span>
+                  <span>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <i key={i} className={`ri-star-${i < testimonial.rating ? 'fill' : 'line'} text-yellow-400`}></i>
+                    ))}
+                  </span>
+                </div>
+                <div className="mb-2">
+                  <span className="font-bold text-gray-700">Date: </span>
+                  <span className="text-gray-600">{testimonial.date}</span>
+                </div>
+                <div className="mb-2">
+                  <span className="font-bold text-gray-700">Status: </span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(testimonial.status)}`}>
+                    {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
+                  </span>
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {testimonial.status === 'pending' && (
+                    <>
+                      <Button size="sm" onClick={() => updateStatus(testimonial.id, 'approved')} className="whitespace-nowrap">
+                        <i className="ri-check-line mr-1"></i>Approve
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => updateStatus(testimonial.id, 'rejected')} className="whitespace-nowrap">
+                        <i className="ri-close-line mr-1"></i>Reject
+                      </Button>
+                    </>
+                  )}
+                  {testimonial.status === 'approved' && (
+                    <Button size="sm" variant="secondary" className="whitespace-nowrap">
+                      <i className="ri-external-link-line mr-1"></i>Push to Website
+                    </Button>
+                  )}
+                  <Button size="sm" variant="danger" onClick={() => deleteTestimonial(testimonial.id)}>
+                    <i className="ri-delete-bin-line"></i>
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Pagination (always below table/cards) */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredTestimonials.length)} of {filteredTestimonials.length} results
             </p>
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setCurrentPage(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
+              <Button size="sm" variant="secondary" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
                 <i className="ri-arrow-left-line"></i>
               </Button>
-              <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                {currentPage} of {totalPages}
-              </span>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => setCurrentPage(currentPage + 1)}
-                              disabled={currentPage === totalPages}
-                            >
-                              <i className="ri-arrow-right-line"></i>
-                            </Button>
-                          </div>
-                        </div>
-                      )}
-                    </Card>
-                  </div>
-                );
-              }
+              <span className="px-3 py-1 text-sm font-medium text-gray-700">{currentPage} of {totalPages}</span>
+              <Button size="sm" variant="secondary" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                <i className="ri-arrow-right-line"></i>
+              </Button>
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}

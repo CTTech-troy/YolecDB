@@ -6,21 +6,36 @@ export default function ContactManager() {
   const [contacts, setContacts] = useState([]);
 
   useEffect(() => {
-    const contactRef = ref(database, "contacts");
-    const unsubscribe = onValue(contactRef, (snapshot) => {
+    // Fetch from both "contacts" and "contactsin"
+    const contactsRef = ref(database, "contacts");
+    const contactsinRef = ref(database, "contactsin");
+
+    let allContacts = [];
+
+    const handleData = (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const contactList = Object.entries(data).map(([id, details]) => ({
           id,
           ...details,
         }));
-        contactList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        setContacts(contactList);
-      } else {
-        setContacts([]);
+        allContacts = [...allContacts, ...contactList];
       }
+    };
+
+    const unsubContacts = onValue(contactsRef, (snapshot) => {
+      allContacts = [];
+      handleData(snapshot);
+      // Fetch contactsin after contacts
+      onValue(contactsinRef, (snapshot2) => {
+        handleData(snapshot2);
+        // Sort by timestamp descending
+        allContacts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+        setContacts(allContacts);
+      }, { onlyOnce: true });
     });
-    return () => unsubscribe();
+
+    return () => unsubContacts();
   }, []);
 
   const formatDate = (timestamp) => {

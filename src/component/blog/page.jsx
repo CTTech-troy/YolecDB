@@ -1,4 +1,4 @@
-// Update to add loading state and empty state UI when no blogs or image available
+// Update: Store image in DB as Base64 instead of Storage
 
 import { useState, useEffect } from 'react';
 import Button from '../../ui/Button.jsx';
@@ -20,7 +20,9 @@ export default function BlogManager() {
     onValue(blogRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const loadedBlogs = Object.keys(data).map((key) => ({ id: key, ...data[key] })).sort((a, b) => new Date(b.date) - new Date(a.date));
+        const loadedBlogs = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .sort((a, b) => new Date(b.date) - new Date(a.date));
         setBlogs(loadedBlogs);
       } else {
         setBlogs([]);
@@ -29,10 +31,11 @@ export default function BlogManager() {
     });
   }, []);
 
-  const handleImageSelect = (file) => {
+  const handleImageSelect = async (file) => {
+    if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setImagePreview(e.target?.result);
+    reader.onloadend = () => {
+      setImagePreview(reader.result); // reader.result is Base64 data URI
     };
     reader.readAsDataURL(file);
   };
@@ -47,7 +50,7 @@ export default function BlogManager() {
       image: imagePreview || '',
       date: new Date().toISOString().split('T')[0],
       author: 'Admin',
-      published: false
+      published: false,
     };
     try {
       const blogRef = ref(database, 'blogs');
