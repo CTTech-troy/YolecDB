@@ -1,96 +1,40 @@
-import { useState } from 'react';
-// FIX: Use correct relative imports for Button and Card
+import { useState, useEffect } from 'react';
 import Button from '../../ui/Button.jsx';
 import Card from '../../ui/Card.jsx';
-
-/**
- * @typedef {Object} Subscriber
- * @property {string} id
- * @property {string} name
- * @property {string} email
- * @property {string} subscriptionDate
- * @property {'active'|'unsubscribed'} status
- * @property {string} source
- */
-
-const mockSubscribers = [
-  {
-    id: '1',
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@example.com',
-    subscriptionDate: '2024-01-15',
-    status: 'active',
-    source: 'Website'
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    email: 'michael.chen@example.com',
-    subscriptionDate: '2024-01-14',
-    status: 'active',
-    source: 'Social Media'
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    email: 'emily.rodriguez@example.com',
-    subscriptionDate: '2024-01-13',
-    status: 'unsubscribed',
-    source: 'Website'
-  },
-  {
-    id: '4',
-    name: 'David Wilson',
-    email: 'david.wilson@example.com',
-    subscriptionDate: '2024-01-12',
-    status: 'active',
-    source: 'Event'
-  },
-  {
-    id: '5',
-    name: 'Lisa Thompson',
-    email: 'lisa.thompson@example.com',
-    subscriptionDate: '2024-01-11',
-    status: 'active',
-    source: 'Website'
-  },
-  {
-    id: '6',
-    name: 'Robert Brown',
-    email: 'robert.brown@example.com',
-    subscriptionDate: '2024-01-10',
-    status: 'active',
-    source: 'Referral'
-  },
-  {
-    id: '7',
-    name: 'Amanda Davis',
-    email: 'amanda.davis@example.com',
-    subscriptionDate: '2024-01-09',
-    status: 'active',
-    source: 'Social Media'
-  },
-  {
-    id: '8',
-    name: 'James Miller',
-    email: 'james.miller@example.com',
-    subscriptionDate: '2024-01-08',
-    status: 'unsubscribed',
-    source: 'Website'
-  }
-];
+import { database } from '../../../firebase';
+import { ref, onValue } from 'firebase/database';
 
 export default function NewsletterPage() {
-  // FIX: Remove TypeScript generics from useState
-  const [subscribers] = useState(mockSubscribers);
+  const [subscribers, setSubscribers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  useEffect(() => {
+    const subRef = ref(database, 'sub-form');
+    const unsubscribe = onValue(subRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const loaded = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+          subscriptionDate: data[key].subscriptionDate || new Date().toISOString(),
+          status: data[key].status || 'active',
+        }));
+        setSubscribers(loaded);
+        console.log('Newsletter Subscribers:', loaded);
+      } else {
+        setSubscribers([]);
+        console.log('Newsletter Subscribers: []');
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   const filteredSubscribers = subscribers.filter(subscriber => {
-    const matchesSearch = subscriber.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         subscriber.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = (subscriber.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (subscriber.email || '').toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || subscriber.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -109,7 +53,6 @@ export default function NewsletterPage() {
       + filteredSubscribers.map(sub => 
           `${sub.name},${sub.email},${sub.subscriptionDate},${sub.status},${sub.source}`
         ).join("\n");
-    
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -119,6 +62,12 @@ export default function NewsletterPage() {
     document.body.removeChild(link);
   };
 
+  // Calculate "This Month" count
+  const thisMonthCount = subscribers.filter(sub => {
+    const date = new Date(sub.subscriptionDate);
+    const now = new Date();
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -150,15 +99,6 @@ export default function NewsletterPage() {
             className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full"
           />
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm pr-8"
-        >
-          <option value="all">All Status</option>
-          <option value="active">Active</option>
-          <option value="unsubscribed">Unsubscribed</option>
-        </select>
       </div>
 
       <Card>
@@ -174,43 +114,6 @@ export default function NewsletterPage() {
               </div>
             </div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                <i className="ri-user-line text-green-600"></i>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Active</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {subscribers.filter(s => s.status === 'active').length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-red-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                <i className="ri-user-unfollow-line text-red-600"></i>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Unsubscribed</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {subscribers.filter(s => s.status === 'unsubscribed').length}
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg">
-            <div className="flex items-center">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                <i className="ri-calendar-line text-purple-600"></i>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">This Month</p>
-                <p className="text-2xl font-bold text-gray-900">24</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -219,17 +122,18 @@ export default function NewsletterPage() {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
                 <th className="text-left py-3 px-4 font-semibold text-gray-700">Subscription Date</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Source</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedSubscribers.map((subscriber) => (
-                <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4 text-gray-700">{subscriber.email}</td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{subscriber.subscriptionDate}</td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{subscriber.source}</td>
-                </tr>
-              ))}
+              {paginatedSubscribers.map((subscriber) => {
+                const formattedDate = new Date(subscriber.subscriptionDate).toLocaleDateString();
+                return (
+                  <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4 text-gray-700">{subscriber.email}</td>
+                    <td className="py-4 px-4 text-sm text-gray-600">{formattedDate}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
