@@ -7,6 +7,15 @@ import { database } from '../../../firebase.js';
 import { ref, push, onValue, remove, update } from 'firebase/database';
 import Swal from 'sweetalert2';
 
+const TYPE_OPTIONS = [
+    { label: 'Conference', value: 'conference', color: 'bg-blue-100 text-blue-700' },
+    { label: 'Workshop', value: 'workshop', color: 'bg-green-100 text-green-700' },
+    { label: 'Seminar', value: 'seminar', color: 'bg-yellow-100 text-yellow-700' },
+    { label: 'Symposium', value: 'symposium', color: 'bg-purple-100 text-purple-700' },
+    { label: 'Virtual', value: 'virtual', color: 'bg-pink-100 text-pink-700' },
+    { label: 'Masterclass', value: 'masterclass', color: 'bg-indigo-100 text-indigo-700' },
+];
+
 export default function GalleryPage() {
     const [images, setImages] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,20 +23,18 @@ export default function GalleryPage() {
     const [formData, setFormData] = useState({
         title: '',
         description: '',
-        type: 'spring',
+        type: 'conference',
     });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        setLoading(true);
         const imagesRef = ref(database, 'modelImages');
         const unsubscribe = onValue(imagesRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                const loadedImages = Object.entries(data).map(([id, value]) => ({
-                    id,
-                    ...value,
-                })).reverse();
+                const loadedImages = Object.entries(data)
+                    .map(([id, value]) => ({ id, ...value }))
+                    .reverse();
                 setImages(loadedImages);
             } else {
                 setImages([]);
@@ -40,7 +47,9 @@ export default function GalleryPage() {
     const handleImageSelect = (file) => {
         const reader = new FileReader();
         reader.onload = (e) => {
-            setImagePreview(e.target?.result);
+            if (e.target?.result) {
+                setImagePreview(e.target.result);
+            }
         };
         reader.readAsDataURL(file);
     };
@@ -51,13 +60,14 @@ export default function GalleryPage() {
             return;
         }
 
+        const typeMeta = TYPE_OPTIONS.find(opt => opt.value === formData.type);
         const newImage = {
             url: imagePreview,
             title: formData.title,
             description: formData.description,
             uploadDate: new Date().toISOString().split('T')[0],
-            status: 'draft',
-            type: formData.type || 'spring',
+            type: formData.type,
+            typeColor: typeMeta?.color || '',
         };
 
         const imagesRef = ref(database, 'modelImages');
@@ -73,7 +83,7 @@ export default function GalleryPage() {
     };
 
     const resetForm = () => {
-        setFormData({ title: '', description: '', type: 'spring' });
+        setFormData({ title: '', description: '', type: 'conference' });
         setImagePreview('');
     };
 
@@ -89,18 +99,7 @@ export default function GalleryPage() {
                 const imageRef = ref(database, `modelImages/${id}`);
                 update(imageRef, { status: 'published' })
                     .then(() => {
-                        Swal.fire({
-                            title: 'Published!',
-                            text: 'The image is now live.',
-                            icon: 'success',
-                            showCancelButton: true,
-                            confirmButtonText: 'OK',
-                            cancelButtonText: 'Cancel',
-                        }).then((result) => {
-                            if (result.isConfirmed || result.dismiss === Swal.DismissReason.cancel) {
-                                setIsModalOpen(false);
-                            }
-                        });
+                        Swal.fire('Published!', 'The image is now live.', 'success');
                     })
                     .catch(() => {
                         Swal.fire('Error', 'Failed to publish image.', 'error');
@@ -131,7 +130,7 @@ export default function GalleryPage() {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-x-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Model Display Pictures</h1>
@@ -150,29 +149,18 @@ export default function GalleryPage() {
                     {images.map((image) => (
                         <Card key={image.id} padding={false} className="overflow-hidden">
                             <div className="relative">
-                                <img src={image.url} alt={image.title} className="w-full h-64 object-cover object-top" />
-                                <div
-                                    className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-medium ${
-                                        image.status === 'published'
-                                            ? 'bg-green-100 text-green-600'
-                                            : 'bg-yellow-100 text-yellow-600'
-                                    }`}
-                                >
-                                    {image.status}
+                                <img src={image.url} alt={image.title} className="w-full max-h-64 object-cover object-top" />
+                                <div className={`absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium ${image.typeColor}`}>
+                                    {image.type}
                                 </div>
                             </div>
                             <div className="p-4">
                                 <h3 className="font-semibold text-gray-900 mb-1">{image.title}</h3>
                                 <p className="text-sm text-gray-600 mb-2 line-clamp-2">{image.description}</p>
                                 <p className="text-xs text-gray-500 mb-3">{image.uploadDate}</p>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     {image.status !== 'published' && (
-                                        <Button
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={() => handlePublish(image.id)}
-                                            className="flex-1"
-                                        >
+                                        <Button size="sm" variant="secondary" onClick={() => handlePublish(image.id)} className="flex-1">
                                             <i className="ri-upload-cloud-line mr-1"></i> Publish
                                         </Button>
                                     )}
@@ -192,7 +180,7 @@ export default function GalleryPage() {
                 title="Add New Image"
                 maxWidth="max-w-lg"
             >
-                <div className="space-y-6">
+                <div className="space-y-6 overflow-y-auto max-h-[80vh] pr-2">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Image Title *</label>
                         <input
@@ -213,24 +201,30 @@ export default function GalleryPage() {
                             placeholder="Enter image description..."
                         />
                     </div>
-                    <div className="flex items-center gap-2">
-                        <select
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                            value={formData.type}
-                        >
-                            <option value="evening">Evening Wear</option>
-                            <option value="casual">Casual Wear</option>
-                            <option value="business">Business Attire</option>
-                            <option value="spring">Spring Collection</option>
-                            <option value="all">All Types</option>
-                        </select>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Type</label>
+                        <div className="flex flex-wrap gap-2">
+                            {TYPE_OPTIONS.map((option) => (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => setFormData({ ...formData, type: option.value })}
+                                    className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                                        formData.type === option.value
+                                            ? `${option.color} border-blue-500`
+                                            : 'border-gray-300 bg-gray-100 text-gray-700'
+                                    }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image *</label>
                         <ImageUpload onImageSelect={handleImageSelect} preview={imagePreview} />
                     </div>
-                    <div className="flex gap-3 pt-4">
+                    <div className="flex flex-wrap gap-3 pt-4">
                         <Button onClick={handleSave} className="flex-1">
                             <i className="ri-save-line mr-2"></i> Save Image
                         </Button>
