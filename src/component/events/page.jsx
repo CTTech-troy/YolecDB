@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Button from '../../ui/Button.jsx';
 import Card from '../../ui/Card.jsx';
 import { database } from '../../../firebase.js';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, remove } from 'firebase/database';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Swal from 'sweetalert2';
@@ -10,12 +10,10 @@ import Swal from 'sweetalert2';
 export default function EventsSubscribersPage() {
   const [subscribers, setSubscribers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  // Removed unused statusFilter state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [loading, setLoading] = useState(true);
 
-  // Fetch all event subscribers from Firebase
   useEffect(() => {
     setLoading(true);
     const subscribersRef = ref(database, 'event_registrations');
@@ -35,9 +33,7 @@ export default function EventsSubscribersPage() {
     return () => unsubscribe();
   }, []);
 
-  // Filtering logic
   const filteredSubscribers = subscribers.filter(subscriber => {
-    // Combine first and last name for search
     const fullName = (subscriber.firstName || subscriber.lastName)
       ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim()
       : (subscriber.name || '');
@@ -47,7 +43,7 @@ export default function EventsSubscribersPage() {
       (subscriber.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (subscriber.phone || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (subscriber.school || '').toLowerCase().includes(searchTerm.toLowerCase());
-    // Removed statusFilter logic
+
     return matchesSearch;
   });
 
@@ -55,18 +51,15 @@ export default function EventsSubscribersPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedSubscribers = filteredSubscribers.slice(startIndex, startIndex + itemsPerPage);
 
-  // CSV Export
   const exportData = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
       "Full Name,Email,Phone Number,Subscription Date,School/Institution,Event,Status\n" +
       filteredSubscribers
         .map(sub => {
-          // Combine first and last name for Full Name
           const fullName = (sub.firstName || sub.lastName)
             ? `${sub.firstName || ''} ${sub.lastName || ''}`.trim()
             : (sub.name || '');
-          // Format date
           const date = sub.timestamp
             ? (
                 typeof sub.timestamp === 'number'
@@ -87,24 +80,13 @@ export default function EventsSubscribersPage() {
     document.body.removeChild(link);
   };
 
-  // PDF Download with SweetAlert
   const downloadPDF = () => {
     try {
       const doc = new jsPDF();
       doc.text("Event Subscribers", 14, 16);
       doc.autoTable({
         startY: 22,
-        head: [
-          [
-            "Full Name",
-            "Email",
-            "Phone Number",
-            "Subscription Date",
-            "School/Institution",
-            "Event",
-            "Status"
-          ]
-        ],
+        head: [["Full Name", "Email", "Phone Number", "Subscription Date", "School/Institution", "Event", "Status"]],
         body: filteredSubscribers.map(sub => {
           const fullName = (sub.firstName || sub.lastName)
             ? `${sub.firstName || ''} ${sub.lastName || ''}`.trim()
@@ -129,20 +111,33 @@ export default function EventsSubscribersPage() {
         styles: { fontSize: 8 }
       });
       doc.save("event_subscribers.pdf");
-      Swal.fire({
-        icon: 'success',
-        title: 'PDF Downloaded',
-        text: 'Your event subscribers PDF has been downloaded successfully.',
-        confirmButtonText: 'OK'
-      });
+      Swal.fire({ icon: 'success', title: 'PDF Downloaded', text: 'Your event subscribers PDF has been downloaded successfully.', confirmButtonText: 'OK' });
     } catch (error) {
       console.error('PDF download error:', error);
-      Swal.fire({
-        icon: 'error',
-        title: 'Download Failed',
-        text: 'There was an error downloading the PDF.',
-        confirmButtonText: 'OK'
-      });
+      Swal.fire({ icon: 'error', title: 'Download Failed', text: 'There was an error downloading the PDF.', confirmButtonText: 'OK' });
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'This will permanently delete all event subscribers from the database.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete all',
+      cancelButtonText: 'Cancel',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await remove(ref(database, 'event_registrations'));
+        Swal.fire({ icon: 'success', title: 'Deleted', text: 'All event subscribers have been deleted successfully.', confirmButtonText: 'OK' });
+      } catch (error) {
+        console.error('Error deleting data:', error);
+        Swal.fire({ icon: 'error', title: 'Error', text: 'An error occurred while deleting the data.', confirmButtonText: 'OK' });
+      }
     }
   };
 
@@ -161,6 +156,10 @@ export default function EventsSubscribersPage() {
           <Button variant="secondary" onClick={downloadPDF}>
             <i className="ri-file-pdf-line mr-2"></i>
             Download PDF
+          </Button>
+          <Button variant="secondary" onClick={handleDeleteAll} styles={{ backgroundColor: '#f87171', color: '#fff' }}  >
+            <i className="ri-delete-bin-fill mr-2"></i>
+            Delete
           </Button>
         </div>
       </div>
@@ -183,7 +182,6 @@ export default function EventsSubscribersPage() {
           <div className="text-center text-gray-500 py-10">Loading subscribers...</div>
         ) : (
           <>
-            {/* Responsive Table Wrapper */}
             <div className="w-full overflow-x-auto">
               <table className="min-w-full">
                 <thead className="hidden sm:table-header-group">
@@ -197,11 +195,7 @@ export default function EventsSubscribersPage() {
                 </thead>
                 <tbody>
                   {paginatedSubscribers.map((subscriber) => (
-                    <tr
-                      key={subscriber.id}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      {/* Desktop/Table view */}
+                    <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4 text-gray-700 hidden sm:table-cell">
                         {subscriber.firstName || subscriber.lastName
                           ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim()
@@ -212,32 +206,13 @@ export default function EventsSubscribersPage() {
                       <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">{subscriber.school || subscriber.institution || ''}</td>
                       <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">{subscriber.event || ''}</td>
 
-                      {/* Mobile/Column view */}
                       <td className="py-4 px-4 text-gray-700 sm:hidden" colSpan={7}>
                         <div className="flex flex-col gap-2 border rounded-lg p-3 bg-gray-50 overflow-hidden">
-                          <div>
-                            <span className="font-semibold">Full Name: </span>
-                            {subscriber.firstName || subscriber.lastName
-                              ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim()
-                              : subscriber.name || ''}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Email: </span>
-                            {subscriber.email || ''}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Phone: </span>
-                            {subscriber.phone || ''}
-                          </div>
-                          <div>
-                            <span className="font-semibold">School/Institution: </span>
-                            {subscriber.school || subscriber.institution || ''}
-                          </div>
-                          <div>
-                            <span className="font-semibold">Event: </span>
-                            {subscriber.event || ''}
-                          </div>
-                         
+                          <div><span className="font-semibold">Full Name: </span>{subscriber.firstName || subscriber.lastName ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim() : subscriber.name || ''}</div>
+                          <div><span className="font-semibold">Email: </span>{subscriber.email || ''}</div>
+                          <div><span className="font-semibold">Phone: </span>{subscriber.phone || ''}</div>
+                          <div><span className="font-semibold">School/Institution: </span>{subscriber.school || subscriber.institution || ''}</div>
+                          <div><span className="font-semibold">Event: </span>{subscriber.event || ''}</div>
                         </div>
                       </td>
                     </tr>
@@ -247,27 +222,13 @@ export default function EventsSubscribersPage() {
             </div>
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
-                  Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results
-                </p>
+                <p className="text-sm text-gray-600">Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results</p>
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setCurrentPage(currentPage - 1)}
-                    disabled={currentPage === 1}
-                  >
+                  <Button size="sm" variant="secondary" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
                     <i className="ri-arrow-left-line"></i>
                   </Button>
-                  <span className="px-3 py-1 text-sm font-medium text-gray-700">
-                    {currentPage} of {totalPages}
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setCurrentPage(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                  >
+                  <span className="px-3 py-1 text-sm font-medium text-gray-700">{currentPage} of {totalPages}</span>
+                  <Button size="sm" variant="secondary" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
                     <i className="ri-arrow-right-line"></i>
                   </Button>
                 </div>
