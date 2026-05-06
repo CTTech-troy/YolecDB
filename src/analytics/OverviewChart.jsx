@@ -3,8 +3,9 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 
 const OverviewChart = ({ data }) => {
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+    <div className="h-[240px] sm:h-[300px] w-full min-w-0">
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 20, right: 12, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis dataKey="name" />
         <YAxis />
@@ -16,6 +17,7 @@ const OverviewChart = ({ data }) => {
         <Bar dataKey="likes" fill="#ff8042" />
       </BarChart>
     </ResponsiveContainer>
+    </div>
   );
 };
 

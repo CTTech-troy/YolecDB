@@ -1,9 +1,27 @@
 import React, { useState } from 'react';
-import { ref, push, get } from 'firebase/database';
-import { database } from '../../firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  deleteUser,
+} from 'firebase/auth';
+import { auth } from '../../firebase.js';
 import Swal from 'sweetalert2';
 import { login } from './authHelpers';
 import { useNavigate } from 'react-router-dom';
+
+const rawApiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const publicApiBase = rawApiBase.replace(/\/mgmt$/, '') || rawApiBase;
+
+async function ensureAdminClaim(user) {
+  await user.getIdToken(true);
+  let tr = await user.getIdTokenResult(true);
+  if (tr.claims.admin === true) return tr;
+  await new Promise((r) => setTimeout(r, 600));
+  await user.getIdToken(true);
+  return user.getIdTokenResult(true);
+}
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -15,9 +33,21 @@ const Auth = () => {
   const [signupLoading, setSignupLoading] = useState(false);
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
-  const [signupForm, setSignupForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [signupForm, setSignupForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    inviteCode: '',
+  });
   const [loginErrors, setLoginErrors] = useState({ email: '', password: '' });
-  const [signupErrors, setSignupErrors] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [signupErrors, setSignupErrors] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    inviteCode: '',
+  });
 
   const navigate = useNavigate();
 
@@ -47,52 +77,46 @@ const Auth = () => {
 
   const loginUser = async (email, password) => {
     try {
-      const usersRef = ref(database, 'users');
-      const snapshot = await get(usersRef);
-      let foundUser = null;
-
-      if (snapshot.exists()) {
-        snapshot.forEach(childSnap => {
-          const user = childSnap.val();
-          if (user.email === email && user.password === password) {
-            foundUser = user;
-            return true; // break out of forEach
-          }
-        });
-      }
-
-      if (foundUser) {
-        localStorage.setItem('user', JSON.stringify(foundUser));
-        login(rememberMe);
-
-        Swal.fire({
-          icon: 'success',
-          title: 'Login Successful!',
-          text: 'Welcome to your dashboard.',
-          timer: 1500,
-          showConfirmButton: false,
-        }).then(() => {
-          navigate('/dashboard');
-        });
-      } else {
+      await signInWithEmailAndPassword(auth, email, password);
+      const u = auth.currentUser;
+      const tokenResult = await u.getIdTokenResult(true);
+      if (tokenResult.claims.admin !== true) {
+        await signOut(auth);
         Swal.fire({
           icon: 'error',
-          title: 'Login Failed',
-          text: 'Invalid email or password.',
+          title: 'Access denied',
+          text: 'This account does not have dashboard admin access.',
         });
+        return;
       }
+      login(rememberMe);
+      Swal.fire({
+        icon: 'success',
+        title: 'Login Successful!',
+        text: 'Welcome to your dashboard.',
+        timer: 1500,
+        showConfirmButton: false,
+      }).then(() => {
+        navigate('/dashboard');
+      });
     } catch {
       Swal.fire({
         icon: 'error',
-        title: 'Login Error',
-        text: 'Could not log in. Please try again.',
+        title: 'Login Failed',
+        text: 'Invalid email or password.',
       });
     }
   };
 
   const handleSignupSubmit = async (e) => {
     e.preventDefault();
-    const errors = { name: '', email: '', password: '', confirmPassword: '' };
+    const errors = {
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      inviteCode: '',
+    };
 
     if (!signupForm.name) errors.name = 'Name is required';
     if (!signupForm.email) {
@@ -110,48 +134,111 @@ const Auth = () => {
     } else if (signupForm.password !== signupForm.confirmPassword) {
       errors.confirmPassword = 'Passwords do not match';
     }
+    const code = signupForm.inviteCode.trim();
+    if (!code) {
+      errors.inviteCode = 'Invite code is required';
+    } else if (code.length < 8) {
+      errors.inviteCode = 'Invite code must be at least 8 characters';
+    }
+    if (!rawApiBase) {
+      errors.inviteCode =
+        errors.inviteCode || 'Set VITE_API_BASE_URL in Dashboard/.env (e.g. http://localhost:4000/api)';
+    }
 
     setSignupErrors(errors);
 
-    if (!errors.name && !errors.email && !errors.password && !errors.confirmPassword) {
-      setSignupLoading(true);
-      try {
-        const res = await push(ref(database, 'users'), {
-          name: signupForm.name,
-          email: signupForm.email,
-          password: signupForm.password,
-          createdAt: new Date().toISOString(),
-        });
-        if (res && res.key) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Signup Successful!',
-            text: 'Your account has been created. Please log in.',
-            timer: 2000,
-            showConfirmButton: false,
-          }).then(() => {
-            setIsLogin(true);
-            setSignupForm({ name: '', email: '', password: '', confirmPassword: '' });
-          });
-        } else {
-          throw new Error('User not saved');
-        }
-      } catch {
+    if (
+      errors.name ||
+      errors.email ||
+      errors.password ||
+      errors.confirmPassword ||
+      errors.inviteCode
+    ) {
+      return;
+    }
+
+    setSignupLoading(true);
+    let cred = null;
+    try {
+      cred = await createUserWithEmailAndPassword(
+        auth,
+        signupForm.email,
+        signupForm.password
+      );
+      await updateProfile(cred.user, { displayName: signupForm.name });
+      const idToken = await cred.user.getIdToken();
+      const r = await fetch(`${publicApiBase}/public/activate-dashboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, inviteCode: code }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        await deleteUser(cred.user);
+        await signOut(auth);
         Swal.fire({
           icon: 'error',
-          title: 'Signup Failed',
-          text: 'Could not create account. Please try again.',
+          title: 'Could not grant access',
+          text: data.error || 'Invalid invite code or server error.',
         });
+        setSignupLoading(false);
+        return;
       }
-      setSignupLoading(false);
+      const tr = await ensureAdminClaim(cred.user);
+      if (tr.claims.admin !== true) {
+        await deleteUser(cred.user);
+        await signOut(auth);
+        Swal.fire({
+          icon: 'error',
+          title: 'Access setup failed',
+          text: 'Try again or contact an administrator.',
+        });
+        setSignupLoading(false);
+        return;
+      }
+      login(rememberMe);
+      Swal.fire({
+        icon: 'success',
+        title: 'Welcome!',
+        text: 'Your account is ready.',
+        timer: 1500,
+        showConfirmButton: false,
+      }).then(() => {
+        navigate('/dashboard');
+      });
+      setSignupForm({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        inviteCode: '',
+      });
+    } catch (err) {
+      if (cred?.user) {
+        try {
+          await deleteUser(cred.user);
+        } catch {
+          /* ignore */
+        }
+      }
+      await signOut(auth);
+      Swal.fire({
+        icon: 'error',
+        title: 'Signup Failed',
+        text:
+          err?.code === 'auth/email-already-in-use'
+            ? 'This email is already registered. Log in instead.'
+            : 'Could not create account. Please try again.',
+      });
     }
+    setSignupLoading(false);
   };
 
   const handlePasswordChange = (value, isSignup = false) => {
     if (isSignup) {
-      setSignupForm(prev => ({ ...prev, password: value }));
+      setSignupForm((prev) => ({ ...prev, password: value }));
     } else {
-      setLoginForm(prev => ({ ...prev, password: value }));
+      setLoginForm((prev) => ({ ...prev, password: value }));
     }
   };
 
@@ -164,7 +251,7 @@ const Auth = () => {
         input[type="number"] { -moz-appearance: textfield; }
       `}</style>
 
-      <div className="flex justify-between items-center p-6">
+      <div className="flex justify-between items-center gap-3 px-4 py-4 sm:p-6">
         <div className="flex items-center space-x-2">
           <i className={`fas fa-shield-alt text-2xl ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}></i>
           <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>SecureAuth</h1>
@@ -176,17 +263,18 @@ const Auth = () => {
         </button>
       </div>
 
-      <div className="flex items-center justify-center px-4 py-8">
-        <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
+      <div className="flex items-center justify-center px-3 sm:px-4 py-6 sm:py-8 min-w-0">
+        <div className={`w-full max-w-md min-w-0 p-5 sm:p-8 rounded-2xl shadow-xl transition-colors duration-300 ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}>
 
-          {/* Tab Toggle */}
           <div className={`flex rounded-lg p-1 mb-8 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
             <button
+              type="button"
               onClick={() => setIsLogin(true)}
               className={`flex-1 py-2 px-4 rounded-md transition-all duration-200 text-sm font-medium cursor-pointer whitespace-nowrap !rounded-button ${isLogin ? 'bg-blue-600 text-white shadow-sm' : isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               Log In
             </button>
             <button
+              type="button"
               onClick={() => setIsLogin(false)}
               className={`flex-1 py-2 px-4 rounded-md transition-all duration-200 text-sm font-medium cursor-pointer whitespace-nowrap !rounded-button ${!isLogin ? 'bg-blue-600 text-white shadow-sm' : isDarkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'}`}>
               Sign Up
@@ -200,7 +288,7 @@ const Auth = () => {
                 <input
                   type="email"
                   value={loginForm.email}
-                  onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => setLoginForm((prev) => ({ ...prev, email: e.target.value }))}
                   className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} ${loginErrors.email ? 'border-red-500' : ''}`}
                   placeholder="Enter your email"
                 />
@@ -231,7 +319,6 @@ const Auth = () => {
                   <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                   <span className={isDarkMode ? 'text-gray-300' : 'text-gray-700'}>Remember me</span>
                 </label>
-                <a href="#" className={`text-sm ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Forgot password?</a>
               </div>
               <button
                 type="submit"
@@ -254,7 +341,7 @@ const Auth = () => {
                 <input
                   type="text"
                   value={signupForm.name}
-                  onChange={(e) => setSignupForm(prev => ({ ...prev, name: e.target.value }))}
+                  onChange={(e) => setSignupForm((prev) => ({ ...prev, name: e.target.value }))}
                   className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} ${signupErrors.name ? 'border-red-500' : ''}`}
                   placeholder="Full Name"
                 />
@@ -265,11 +352,23 @@ const Auth = () => {
                 <input
                   type="email"
                   value={signupForm.email}
-                  onChange={(e) => setSignupForm(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={(e) => setSignupForm((prev) => ({ ...prev, email: e.target.value }))}
                   className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} ${signupErrors.email ? 'border-red-500' : ''}`}
                   placeholder="Email"
                 />
                 {signupErrors.email && <p className="text-red-500 text-sm mt-1">{signupErrors.email}</p>}
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Invite code</label>
+                <input
+                  type="password"
+                  autoComplete="off"
+                  value={signupForm.inviteCode}
+                  onChange={(e) => setSignupForm((prev) => ({ ...prev, inviteCode: e.target.value }))}
+                  className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} ${signupErrors.inviteCode ? 'border-red-500' : ''}`}
+                  placeholder="Code from your administrator"
+                />
+                {signupErrors.inviteCode && <p className="text-red-500 text-sm mt-1">{signupErrors.inviteCode}</p>}
               </div>
               <div>
                 <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Password</label>
@@ -297,7 +396,7 @@ const Auth = () => {
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={signupForm.confirmPassword}
-                    onChange={(e) => setSignupForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    onChange={(e) => setSignupForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                     className={`w-full p-3 rounded-lg border ${isDarkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} ${signupErrors.confirmPassword ? 'border-red-500' : ''}`}
                     placeholder="Confirm Password"
                   />
@@ -331,6 +430,7 @@ const Auth = () => {
             <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               {isLogin ? "Don't have an account? " : "Already have an account? "}
               <button
+                type="button"
                 onClick={() => setIsLogin(!isLogin)}
                 className={`font-medium cursor-pointer hover:underline ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>
                 {isLogin ? 'Sign up' : 'Log in'}

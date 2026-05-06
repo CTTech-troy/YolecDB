@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
 import Swal from 'sweetalert2';
+import { auth } from '../firebase.js';
 
 const useIdleLogout = (idleLimit = 5 * 60 * 1000) => { // default 5 min
   const [lastActive, setLastActive] = useState(Date.now());
@@ -18,7 +20,8 @@ const useIdleLogout = (idleLimit = 5 * 60 * 1000) => { // default 5 min
 
     const interval = setInterval(() => {
       if (Date.now() - lastActive > idleLimit) {
-        localStorage.removeItem('user');
+        signOut(auth).catch(() => {});
+        localStorage.removeItem('rememberMe');
         Swal.fire({
           icon: 'info',
           title: 'Session expired',

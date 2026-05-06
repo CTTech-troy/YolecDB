@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
-import { database } from '../../../firebase';
-import { ref, onValue, update, remove } from 'firebase/database';
+import { useState, useEffect, useCallback } from 'react';
 import Button from '../../ui/Button';
 import Card from '../../ui/Card';
 import Swal from 'sweetalert2';
+import * as testimonialsApi from '../../services/testimonialsApi.js';
 
 const pastelColors = ["#A3CEF1", "#F7D6E0", "#B8F2E6", "#F6EAC2", "#D0E6A5", "#FFD6BA", "#C3B1E1", "#FFB7B2"];
 
@@ -30,36 +29,40 @@ export default function TestimonialsPage() {
   const [currentPage] = useState(1);
   const itemsPerPage = 10;
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadTestimonials = useCallback(async () => {
+    setError(null);
+    try {
+      const raw = await testimonialsApi.listTestimonials();
+      const rows = Array.isArray(raw) ? raw : [];
+      const loadedTestimonials = rows.map((item) => {
+        const formattedDate = item.timestamp ? new Date(item.timestamp).toLocaleDateString() + ' ' + new Date(item.timestamp).toLocaleTimeString() : '';
+        return {
+          id: item.id,
+          name: item.name || '',
+          email: item.email || '',
+          company: item.company || '',
+          content: item.testimonial || '',
+          rating: item.rating || 0,
+          date: formattedDate,
+          status: item.status || 'pending',
+          published: item.published || false,
+          photo: item.photo || ''
+        };
+      });
+      setTestimonials(loadedTestimonials);
+    } catch (e) {
+      setError(e?.message || 'Failed to load testimonials');
+      setTestimonials([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const testimonialsRef = ref(database, 'testimonials');
-    const unsubscribe = onValue(testimonialsRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const loadedTestimonials = Object.keys(data).map((key) => {
-          const item = data[key];
-          const formattedDate = item.timestamp ? new Date(item.timestamp).toLocaleDateString() + ' ' + new Date(item.timestamp).toLocaleTimeString() : '';
-          return {
-            id: key,
-            name: item.name || '',
-            email: item.email || '',
-            company: item.company || '',
-            content: item.testimonial || '',
-            rating: item.rating || 0,
-            date: formattedDate,
-            status: item.status || 'pending',
-            published: item.published || false,
-            photo: item.photo || ''
-          };
-        });
-        setTestimonials(loadedTestimonials);
-      } else {
-        setTestimonials([]);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    loadTestimonials();
+  }, [loadTestimonials]);
 
   function truncateContent(content) {
     if (typeof content !== 'string') return '';
@@ -77,37 +80,37 @@ export default function TestimonialsPage() {
   const paginatedTestimonials = filteredTestimonials.slice(startIndex, startIndex + itemsPerPage);
 
   const updateStatus = (id, status) => {
-    const testimonialRef = ref(database, `testimonials/${id}`);
-    update(testimonialRef, { status })
+    testimonialsApi.updateTestimonial(id, { status })
       .then(() => {
         Swal.fire({ icon: 'success', title: 'Status Updated', text: `Testimonial status changed to ${status}.`, timer: 1500, showConfirmButton: false });
+        loadTestimonials();
       })
-      .catch(() => {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update status.' });
+      .catch((err) => {
+        Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed to update status.' });
       });
   };
 
   const publishTestimonial = (id) => {
-    const testimonialRef = ref(database, `testimonials/${id}`);
-    update(testimonialRef, { published: true })
+    testimonialsApi.updateTestimonial(id, { published: true })
       .then(() => {
         Swal.fire({ icon: 'success', title: 'Testimonial Published', text: 'The testimonial has been published to the website.', timer: 1500, showConfirmButton: false });
+        loadTestimonials();
       })
-      .catch(() => {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to publish testimonial.' });
+      .catch((err) => {
+        Swal.fire({ icon: 'error', title: 'Error', text: err?.message || 'Failed to publish testimonial.' });
       });
   };
 
   const deleteTestimonial = (id) => {
     Swal.fire({ title: 'Are you sure?', text: "This will permanently delete the testimonial.", icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes, delete it!', cancelButtonText: 'Cancel' }).then((result) => {
       if (result.isConfirmed) {
-        const testimonialRef = ref(database, `testimonials/${id}`);
-        remove(testimonialRef)
+        testimonialsApi.deleteTestimonial(id)
           .then(() => {
             Swal.fire('Deleted!', 'The testimonial has been deleted.', 'success');
+            loadTestimonials();
           })
-          .catch(() => {
-            Swal.fire('Error', 'Failed to delete testimonial.', 'error');
+          .catch((err) => {
+            Swal.fire('Error', err?.message || 'Failed to delete testimonial.', 'error');
           });
       }
     });
@@ -122,18 +125,18 @@ export default function TestimonialsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Testimonials</h1>
-          <p className="text-gray-600 mt-1">Manage customer testimonials and reviews</p>
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Testimonials</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage customer testimonials and reviews</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+          <div className="relative flex-1 min-w-0">
             <i className="ri-search-line absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-            <input type="text" placeholder="Search testimonials..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:w-64" />
+            <input type="text" placeholder="Search testimonials..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-10 pr-4 py-2.5 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm w-full sm:min-w-[12rem] sm:max-w-xs" />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm pr-8">
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-auto min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm pr-8">
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="approved">Approved</option>
@@ -142,8 +145,60 @@ export default function TestimonialsPage() {
         </div>
       </div>
 
-      <Card>
-        <div className="overflow-x-auto max-w-full hidden md:block">
+      {error && (
+        <p className="text-sm text-red-600" role="alert">{error}</p>
+      )}
+
+      <Card padding={false} className="overflow-hidden">
+        <div className="md:hidden divide-y divide-gray-100">
+          {loading ? (
+            <p className="p-6 text-center text-gray-500 text-sm">Loading testimonials...</p>
+          ) : paginatedTestimonials.length === 0 ? (
+            <p className="p-6 text-center text-gray-500 text-sm">No testimonials match your filters.</p>
+          ) : (
+            paginatedTestimonials.map((testimonial) => (
+              <div key={testimonial.id} className="p-4 space-y-3">
+                <div className="flex items-start gap-3">
+                  {testimonial.photo ? (
+                    <img src={testimonial.photo} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <img src={getAvatar(testimonial.name)} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900 truncate">{testimonial.name}</div>
+                    {testimonial.email && <div className="text-xs text-gray-500 truncate">{testimonial.email}</div>}
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(testimonial.status)}`}>
+                      {testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-700 line-clamp-4">{testimonial.content}</p>
+                <div className="flex flex-wrap gap-2">
+                  {testimonial.status === 'pending' && (
+                    <>
+                      <Button size="sm" onClick={() => updateStatus(testimonial.id, 'approved')} className="flex-1 min-w-[7rem]">
+                        <i className="ri-check-line mr-1"></i>Approve
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => updateStatus(testimonial.id, 'rejected')} className="flex-1 min-w-[7rem]">
+                        <i className="ri-close-line mr-1"></i>Reject
+                      </Button>
+                    </>
+                  )}
+                  {testimonial.status === 'approved' && !testimonial.published && (
+                    <Button size="sm" variant="secondary" className="w-full" onClick={() => publishTestimonial(testimonial.id)}>
+                      <i className="ri-external-link-line mr-1"></i>Push to Website
+                    </Button>
+                  )}
+                  {testimonial.published && <span className="text-green-600 text-xs font-semibold w-full">Published</span>}
+                  <Button size="sm" variant="danger" className="w-full sm:w-auto" onClick={() => deleteTestimonial(testimonial.id)}>
+                    <i className="ri-delete-bin-line mr-1"></i>Delete
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="overflow-x-auto max-w-full hidden md:block p-4 sm:p-6">
           <table className="w-full max-w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-gray-200">
@@ -198,3 +253,4 @@ export default function TestimonialsPage() {
     </div>
   );
 }
+

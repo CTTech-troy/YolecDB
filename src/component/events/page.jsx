@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Button from '../../ui/Button.jsx';
 import Card from '../../ui/Card.jsx';
-import { database } from '../../../firebase.js';
-import { ref, onValue, remove } from 'firebase/database';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Swal from 'sweetalert2';
+import * as eventRegistrationsApi from '../../services/eventRegistrationsApi.js';
 
 export default function EventsSubscribersPage() {
   const [subscribers, setSubscribers] = useState([]);
@@ -13,25 +12,24 @@ export default function EventsSubscribersPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadSubscribers = useCallback(async () => {
+    setError(null);
+    try {
+      const rows = await eventRegistrationsApi.listEventRegistrations();
+      setSubscribers(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      setError(e?.message || 'Failed to load subscribers');
+      setSubscribers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    setLoading(true);
-    const subscribersRef = ref(database, 'event_registrations');
-    const unsubscribe = onValue(subscribersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const list = Object.entries(data).map(([id, value]) => ({
-          id,
-          ...value,
-        }));
-        setSubscribers(list);
-      } else {
-        setSubscribers([]);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    loadSubscribers();
+  }, [loadSubscribers]);
 
   const filteredSubscribers = subscribers.filter(subscriber => {
     const fullName = (subscriber.firstName || subscriber.lastName)
@@ -132,37 +130,43 @@ export default function EventsSubscribersPage() {
 
     if (result.isConfirmed) {
       try {
-        await remove(ref(database, 'event_registrations'));
+        await eventRegistrationsApi.deleteAllEventRegistrations();
         Swal.fire({ icon: 'success', title: 'Deleted', text: 'All event subscribers have been deleted successfully.', confirmButtonText: 'OK' });
+        setLoading(true);
+        await loadSubscribers();
       } catch (error) {
         console.error('Error deleting data:', error);
-        Swal.fire({ icon: 'error', title: 'Error', text: 'An error occurred while deleting the data.', confirmButtonText: 'OK' });
+        Swal.fire({ icon: 'error', title: 'Error', text: error?.message || 'An error occurred while deleting the data.', confirmButtonText: 'OK' });
       }
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Event Subscribers</h1>
-          <p className="text-gray-600 mt-1">Manage your event subscriber list</p>
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Event Subscribers</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your event subscriber list</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={exportData}>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={exportData}>
             <i className="ri-download-cloud-line mr-2"></i>
             Export CSV
           </Button>
-          <Button variant="secondary" onClick={downloadPDF}>
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={downloadPDF}>
             <i className="ri-file-pdf-line mr-2"></i>
             Download PDF
           </Button>
-          <Button variant="secondary" onClick={handleDeleteAll} styles={{ backgroundColor: '#f87171', color: '#fff' }}  >
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={handleDeleteAll} styles={{ backgroundColor: '#f87171', color: '#fff' }}>
             <i className="ri-delete-bin-fill mr-2"></i>
             Delete
           </Button>
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-red-600" role="alert">{error}</p>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -221,9 +225,9 @@ export default function EventsSubscribersPage() {
               </table>
             </div>
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results</p>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 order-2 sm:order-1">Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results</p>
+                <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
                   <Button size="sm" variant="secondary" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
                     <i className="ri-arrow-left-line"></i>
                   </Button>

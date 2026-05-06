@@ -1,42 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Button from '../../ui/Button.jsx';
 import Card from '../../ui/Card.jsx';
-import { database } from '../../../firebase';
-import { ref, onValue } from 'firebase/database';
+import * as newsletterApi from '../../services/newsletterApi.js';
 
 export default function NewsletterPage() {
   const [subscribers, setSubscribers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    const subRef = ref(database, 'sub-form');
-    const unsubscribe = onValue(subRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const loaded = Object.keys(data).map((key) => ({
-          id: key,
-          ...data[key],
-          subscriptionDate: data[key].subscriptionDate || new Date().toISOString(),
-          status: data[key].status || 'active',
-        }));
-        setSubscribers(loaded);
-        console.log('Newsletter Subscribers:', loaded);
-      } else {
-        setSubscribers([]);
-        console.log('Newsletter Subscribers: []');
-      }
-    });
-    return () => unsubscribe();
+  const loadSubscribers = useCallback(async () => {
+    setError(null);
+    try {
+      const raw = await newsletterApi.listNewsletterSubscribers();
+      const rows = Array.isArray(raw) ? raw : [];
+      const loaded = rows.map((row) => ({
+        ...row,
+        subscriptionDate: row.subscriptionDate || new Date().toISOString(),
+        status: row.status || 'active',
+      }));
+      setSubscribers(loaded);
+    } catch (e) {
+      setError(e?.message || 'Failed to load subscribers');
+      setSubscribers([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadSubscribers();
+  }, [loadSubscribers]);
 
   const filteredSubscribers = subscribers.filter(subscriber => {
     const matchesSearch = (subscriber.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (subscriber.email || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || subscriber.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    return matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredSubscribers.length / itemsPerPage);
@@ -48,9 +49,9 @@ export default function NewsletterPage() {
   };
 
   const exportData = () => {
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + "Name,Email,Subscription Date,Status,Source\n"
-      + filteredSubscribers.map(sub => 
+      + filteredSubscribers.map(sub =>
           `${sub.name},${sub.email},${sub.subscriptionDate},${sub.status},${sub.source}`
         ).join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -62,7 +63,6 @@ export default function NewsletterPage() {
     document.body.removeChild(link);
   };
 
-  // Calculate "This Month" count
   const thisMonthCount = subscribers.filter(sub => {
     const date = new Date(sub.subscriptionDate);
     const now = new Date();
@@ -70,23 +70,27 @@ export default function NewsletterPage() {
   }).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Newsletter Subscribers</h1>
-          <p className="text-gray-600 mt-1">Manage your newsletter subscriber list</p>
+    <div className="space-y-6 min-w-0">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Newsletter Subscribers</h1>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Manage your newsletter subscriber list</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="secondary" onClick={exportData}>
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto">
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={exportData}>
             <i className="ri-download-cloud-line mr-2"></i>
             Export CSV
           </Button>
-          <Button variant="secondary" onClick={downloadPDF}>
+          <Button variant="secondary" className="w-full sm:w-auto" onClick={downloadPDF}>
             <i className="ri-file-pdf-line mr-2"></i>
             Download PDF
           </Button>
         </div>
       </div>
+
+      {error && (
+        <p className="text-sm text-red-600" role="alert">{error}</p>
+      )}
 
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -111,11 +115,15 @@ export default function NewsletterPage() {
               <div>
                 <p className="text-sm text-gray-600">Total Subscribers</p>
                 <p className="text-2xl font-bold text-gray-900">{subscribers.length}</p>
+                <p className="text-xs text-gray-500 mt-1">This month: {thisMonthCount}</p>
               </div>
             </div>
           </div>
         </div>
 
+        {loading ? (
+          <p className="text-center text-gray-500 py-10">Loading subscribers...</p>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -137,13 +145,14 @@ export default function NewsletterPage() {
             </tbody>
           </table>
         </div>
+        )}
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-200">
+            <p className="text-sm text-gray-600 order-2 sm:order-1">
               Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2 order-1 sm:order-2">
               <Button
                 size="sm"
                 variant="secondary"

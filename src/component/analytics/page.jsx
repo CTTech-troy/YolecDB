@@ -54,21 +54,22 @@ function Analytics() {
   };
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 min-w-0">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between min-w-0">
+        <div className="min-w-0">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-600 mt-1">Track your website performance and engagement</p>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">Track your website performance and engagement</p>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <div className="flex rounded-lg border border-gray-300 overflow-hidden">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
+          <div className="flex rounded-lg border border-gray-300 overflow-hidden min-h-[44px] w-full sm:w-auto">
             {['7d', '30d', 'all'].map((filter) => (
               <button
                 key={filter}
+                type="button"
                 onClick={() => setTimeFilter(filter)}
-                className={`px-4 py-2 text-sm font-medium ${
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2.5 text-sm font-medium min-h-[44px] ${
                   timeFilter === filter
                     ? 'bg-blue-600 text-white'
                     : 'bg-white text-gray-700 hover:bg-gray-50'
@@ -78,7 +79,7 @@ function Analytics() {
               </button>
             ))}
           </div>
-          <Button onClick={downloadReport}>
+          <Button className="w-full sm:w-auto shrink-0" onClick={downloadReport}>
             Download Report
           </Button>
         </div>
@@ -86,14 +87,17 @@ function Analytics() {
 
       {/* Overview Chart */}
       <Card>
-        <OverviewChart data={overviewData} />
+        <div className="min-w-0 w-full overflow-x-auto">
+          <OverviewChart data={overviewData} />
+        </div>
       </Card>
 
       {/* Website Visits & Blog Performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-w-0">
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Website Visits</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <div className="h-[240px] sm:h-[300px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={visitsData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
@@ -104,11 +108,13 @@ function Analytics() {
               <Area type="monotone" dataKey="unique" stroke="#10B981" fill="#10B981" fillOpacity={0.6} />
             </AreaChart>
           </ResponsiveContainer>
+          </div>
         </Card>
 
         <Card>
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Blog Performance</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <div className="h-[240px] sm:h-[300px] w-full min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
             <LineChart data={blogPerformanceData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
@@ -120,13 +126,15 @@ function Analytics() {
               <Line type="monotone" dataKey="shares" stroke="#10B981" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
+          </div>
         </Card>
       </div>
 
       {/* Testimonials Engagement */}
       <Card>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Testimonials Engagement</h3>
-        <ResponsiveContainer width="100%" height={400}>
+        <div className="h-[280px] sm:h-[400px] w-full min-w-0">
+        <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={testimonialsData}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="name" />
@@ -138,6 +146,7 @@ function Analytics() {
             <Area type="monotone" dataKey="negative" stroke="#EF4444" fill="#EF4444" fillOpacity={0.6} />
           </AreaChart>
         </ResponsiveContainer>
+        </div>
       </Card>
     </div>
   );

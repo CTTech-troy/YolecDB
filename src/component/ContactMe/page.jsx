@@ -1,42 +1,27 @@
-import { useEffect, useState } from "react";
-import { database } from "../../../firebase.js";
-import { ref, onValue } from "firebase/database";
+import { useEffect, useState, useCallback } from "react";
+import * as contactsApi from "../../services/contactsApi.js";
 
 export default function ContactManager() {
   const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadContacts = useCallback(async () => {
+    setError(null);
+    try {
+      const rows = await contactsApi.listContacts();
+      setContacts(Array.isArray(rows) ? rows : []);
+    } catch (e) {
+      setError(e?.message || "Failed to load contacts");
+      setContacts([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // Fetch from both "contacts" and "contactsin"
-    const contactsRef = ref(database, "contacts");
-    const contactsinRef = ref(database, "contactsin");
-
-    let allContacts = [];
-
-    const handleData = (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const contactList = Object.entries(data).map(([id, details]) => ({
-          id,
-          ...details,
-        }));
-        allContacts = [...allContacts, ...contactList];
-      }
-    };
-
-    const unsubContacts = onValue(contactsRef, (snapshot) => {
-      allContacts = [];
-      handleData(snapshot);
-      // Fetch contactsin after contacts
-      onValue(contactsinRef, (snapshot2) => {
-        handleData(snapshot2);
-        // Sort by timestamp descending
-        allContacts.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-        setContacts(allContacts);
-      }, { onlyOnce: true });
-    });
-
-    return () => unsubContacts();
-  }, []);
+    loadContacts();
+  }, [loadContacts]);
 
   const formatDate = (timestamp) => {
     if (!timestamp) return "N/A";
@@ -54,7 +39,14 @@ export default function ContactManager() {
     <div className="container p-2 mx-auto sm:p-4 dark:text-gray-800">
       <h2 className="mb-4 text-2xl font-semibold leading-tight">Emails</h2>
 
-      {/* Table Header (hidden on mobile) */}
+      {error && (
+        <p className="text-sm text-red-600 mb-4" role="alert">{error}</p>
+      )}
+
+      {loading ? (
+        <div className="p-4 text-center text-gray-500">Loading…</div>
+      ) : (
+      <>
       <div className="hidden sm:flex flex-col overflow-x-auto text-xs">
         <div className="flex text-left bg-gray-100 dark:bg-gray-300 font-semibold">
           <div className="w-32 px-2 py-3 sm:p-3">Sender</div>
@@ -64,18 +56,16 @@ export default function ContactManager() {
         </div>
       </div>
 
-      {/* Rows */}
       {contacts.length === 0 ? (
         <div className="p-4 text-center text-gray-500">No submissions found.</div>
       ) : (
         <div className="space-y-2">
           {contacts.map((contact) => (
             <div
-              key={contact.id}
+              key={`${contact._source || "c"}-${contact.id}`}
               className="border border-gray-200 rounded-lg p-3 text-sm dark:border-gray-300 dark:bg-gray-50 hover:bg-gray-50 transition sm:flex sm:border-0 sm:border-b sm:rounded-none"
             >
 
-              {/* Content */}
               <div className="flex flex-col flex-1 space-y-1 sm:space-y-0 sm:flex-row sm:items-center sm:w-full sm:space-x-4">
                 <div className="sm:w-32 font-medium truncate">{contact.name || "N/A"}</div>
 
@@ -83,7 +73,6 @@ export default function ContactManager() {
                   {contact.message || "N/A"}
                 </div>
 
-                {/* Email Column */}
                 <div
                   className="sm:w-[300px] text-blue-600 underline cursor-pointer break-words text-center"
                   onClick={() => handleEmailClick(contact.email)}
@@ -99,6 +88,8 @@ export default function ContactManager() {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import Event from './layouts/event';
 import AdminDashboard from '../page.jsx'; // adjust if in a different folder
 import Analytics from './component/analytics/page.jsx';
 import BlogManager from './component/blog/page.jsx';
+import BlogRegistrationsPage from './component/registrations/page.jsx';
 import GalleryPage from './component/gallery/page.jsx';
 import NewsletterPage from './component/newsletter/page.jsx';
 import TestimonialsPage from './component/testimonials/page.jsx';
@@ -32,14 +33,18 @@ function AppContent() {
       <div className="flex min-h-screen">
         {!isLoginPage && <Sidebar />}
         <div
-          className={`flex-1 ${!isLoginPage ? 'ml-0 lg:ml-64' : ''} bg-gray-50`}
-          style={{ padding: '30px' }}
+          className={`flex-1 min-w-0 w-full max-w-[100vw] overflow-x-hidden bg-gray-50 ${
+            !isLoginPage
+              ? 'ml-0 lg:ml-64 pt-14 pb-6 px-3 sm:px-4 md:px-6 lg:px-8 lg:pt-8'
+              : ''
+          }`}
         >
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
             <Route path="/blog" element={<ProtectedRoute><BlogManager /></ProtectedRoute>} />
+            <Route path="/blog-registrations" element={<ProtectedRoute><BlogRegistrationsPage /></ProtectedRoute>} />
             <Route path="/gallery" element={<ProtectedRoute><GalleryPage /></ProtectedRoute>} />
             <Route path="/newsletter" element={<ProtectedRoute><NewsletterPage /></ProtectedRoute>} />
             <Route path="/testimonials" element={<ProtectedRoute><TestimonialsPage /></ProtectedRoute>} />
