@@ -57,13 +57,9 @@ export default function Sidebar() {
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
-        <div className="shrink-0 p-4 sm:p-6 pt-[max(1rem,env(safe-area-inset-top))] border-b border-gray-100">
-          <h1
-            className="text-xl sm:text-2xl font-bold text-gray-800 truncate"
-            style={{ fontFamily: 'var(--font-pacifico)' }}
-          >
-            Yolec Panel
-          </h1>
+        <div className="shrink-0 flex items-center gap-3 p-4 sm:p-6 pt-[max(1rem,env(safe-area-inset-top))] border-b border-gray-100">
+          <img src="/logo.png" alt="YolecHub" className="h-9 w-9 shrink-0 object-contain" />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 truncate">YolecHub</h1>
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain py-2 pb-28">

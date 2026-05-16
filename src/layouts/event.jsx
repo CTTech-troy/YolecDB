@@ -674,10 +674,8 @@ const Event = () => {
           <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200">
             {!sidebarCollapsed && (
               <div className="flex items-center space-x-3">
-                <div className="bg-blue-600 p-2 rounded-lg">
-                  <i className="fas fa-crown text-white text-xl"></i>
-                </div>
-                <span className="text-xl font-bold text-gray-900">AdminPro</span>
+                <img src="/logo.png" alt="YolecHub" className="h-9 w-9 object-contain" />
+                <span className="text-xl font-bold text-gray-900">YolecHub</span>
               </div>
             )}
             <button

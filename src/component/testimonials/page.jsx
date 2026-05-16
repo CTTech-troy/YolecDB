@@ -118,9 +118,12 @@ export default function TestimonialsPage() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return 'text-green-600 bg-green-100';
-      case 'rejected': return 'text-red-600 bg-red-100';
-      default: return 'text-yellow-600 bg-yellow-100';
+      case 'approved':
+        return 'text-emerald-700 bg-emerald-100 dark:text-emerald-300 dark:bg-emerald-900/50';
+      case 'rejected':
+        return 'text-red-700 bg-red-100 dark:text-red-300 dark:bg-red-900/50';
+      default:
+        return 'text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/50';
     }
   };
 
@@ -198,36 +201,36 @@ export default function TestimonialsPage() {
             ))
           )}
         </div>
-        <div className="overflow-x-auto max-w-full hidden md:block p-4 sm:p-6">
-          <table className="w-full max-w-full min-w-[600px]">
+        <div className="dashboard-table-wrap hidden max-w-full p-4 sm:p-6 md:block">
+          <table className="dashboard-table min-w-[600px]">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">User</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Content</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Rating</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Date</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+              <tr>
+                <th>User</th>
+                <th>Content</th>
+                <th>Rating</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="py-10 text-center text-gray-500">Loading testimonials...</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-slate-500 dark:text-slate-400">Loading testimonials...</td></tr>
               ) : paginatedTestimonials.map((testimonial) => (
-                <tr key={testimonial.id} className="border-b border-gray-100 hover:bg-gray-50">
+                <tr key={testimonial.id}>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
                       {testimonial.photo ? <img src={testimonial.photo} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" /> : <img src={getAvatar(testimonial.name)} alt={testimonial.name} className="w-10 h-10 rounded-full object-cover object-top" />}
                       <div>
-                        <div className="font-medium text-gray-900">{testimonial.name}</div>
-                        {testimonial.email && <div className="text-sm text-gray-500">{testimonial.email}</div>}
-                        {testimonial.company && <div className="text-sm text-gray-400">{testimonial.company}</div>}
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{testimonial.name}</div>
+                        {testimonial.email && <div className="text-sm text-slate-500 dark:text-slate-400">{testimonial.email}</div>}
+                        {testimonial.company && <div className="text-sm text-slate-400 dark:text-slate-500">{testimonial.company}</div>}
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-4"><p className="text-sm text-gray-700 line-clamp-2 max-w-xs">{truncateContent(testimonial.content)}</p></td>
+                  <td><p className="line-clamp-2 max-w-xs text-slate-600 dark:text-slate-300">{truncateContent(testimonial.content)}</p></td>
                   <td className="py-4 px-4"><div className="flex items-center gap-1">{Array.from({ length: 5 }, (_, i) => (<i key={i} className={`ri-star-${i < testimonial.rating ? 'fill' : 'line'} text-yellow-400`}></i>))}</div></td>
-                  <td className="py-4 px-4 text-sm text-gray-600">{testimonial.date}</td>
+                  <td className="text-slate-500 dark:text-slate-400">{testimonial.date}</td>
                   <td className="py-4 px-4"><span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(testimonial.status)}`}>{testimonial.status.charAt(0).toUpperCase() + testimonial.status.slice(1)}</span></td>
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-2">
@@ -240,7 +243,7 @@ export default function TestimonialsPage() {
                       {testimonial.status === 'approved' && !testimonial.published && (
                         <Button size="sm" variant="secondary" onClick={() => publishTestimonial(testimonial.id)} className="whitespace-nowrap"><i className="ri-external-link-line mr-1"></i>Push to Website</Button>
                       )}
-                      {testimonial.published && <span className="text-green-600 text-xs font-semibold">Published</span>}
+                      {testimonial.published && <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Published</span>}
                       <Button size="sm" variant="danger" onClick={() => deleteTestimonial(testimonial.id)}><i className="ri-delete-bin-line"></i></Button>
                     </div>
                   </td>

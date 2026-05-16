@@ -253,8 +253,8 @@ const Auth = () => {
 
       <div className="flex justify-between items-center gap-3 px-4 py-4 sm:p-6">
         <div className="flex items-center space-x-2">
-          <i className={`fas fa-shield-alt text-2xl ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}></i>
-          <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>SecureAuth</h1>
+          <img src="/logo.png" alt="YolecHub" className="h-9 w-9 object-contain" />
+          <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>YolecHub</h1>
         </div>
         <button
           onClick={() => setIsDarkMode(!isDarkMode)}

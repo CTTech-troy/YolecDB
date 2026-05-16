@@ -258,6 +258,18 @@ export default function BlogManager() {
         onClose={() => setSettingsBlog(null)}
         title={settingsBlog ? `Registration — ${settingsBlog.title}` : 'Registration'}
         maxWidth="max-w-lg"
+        footer={
+          settingsBlog ? (
+            <>
+              <Button variant="secondary" className="w-full sm:flex-1" type="button" onClick={() => copyRegistrationLink(settingsBlog.id)}>
+                Copy link
+              </Button>
+              <Button className="w-full sm:flex-1" type="button" onClick={saveSettings}>
+                Save
+              </Button>
+            </>
+          ) : null
+        }
       >
         {settingsBlog && (
           <div className="space-y-4">
@@ -282,19 +294,28 @@ export default function BlogManager() {
             <p className="text-xs text-gray-500">
               Public URL: <span className="font-mono break-all">{registrationUrl(settingsBlog.id)}</span>
             </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
-              <Button variant="secondary" className="w-full sm:flex-1" type="button" onClick={() => copyRegistrationLink(settingsBlog.id)}>
-                Copy link
-              </Button>
-              <Button className="w-full sm:flex-1" type="button" onClick={saveSettings}>
-                Save
-              </Button>
-            </div>
           </div>
         )}
       </Modal>
 
-      <Modal isOpen={isModalOpen} onClose={handleCancel} title="Add New Blog Post" maxWidth="max-w-2xl">
+      <Modal
+        isOpen={isModalOpen}
+        onClose={handleCancel}
+        title="Add New Blog Post"
+        maxWidth="max-w-2xl"
+        footer={
+          <>
+            <Button variant="secondary" onClick={handleCancel} className="w-full sm:flex-1">
+              <i className="ri-close-line mr-2"></i>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="w-full sm:flex-1">
+              <i className="ri-save-line mr-2"></i>
+              Save Blog
+            </Button>
+          </>
+        }
+      >
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Blog Title</label>
@@ -343,16 +364,6 @@ export default function BlogManager() {
             <ImageUpload onImageSelect={handleImageSelect} preview={imagePreview} />
           </div>
 
-          <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-4">
-            <Button variant="secondary" onClick={handleCancel} className="w-full sm:flex-1">
-              <i className="ri-close-line mr-2"></i>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="w-full sm:flex-1">
-              <i className="ri-save-line mr-2"></i>
-              Save Blog
-            </Button>
-          </div>
         </div>
       </Modal>
     </div>

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import logoUrl from '../assets/logo.png';
+const SITE_LOGO_SRC = '/logo.png';
 
 export default function Loader({ message = 'Loading…' }) {
   useEffect(() => {
@@ -31,9 +31,9 @@ export default function Loader({ message = 'Loading…' }) {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-700 px-4">
       <div className="relative mb-4">
         <img
-          src={logoUrl}
-          alt="Dashboard logo"
-          className="w-20 h-20 object-cover rounded-full shadow-2xl"
+          src={SITE_LOGO_SRC}
+          alt="YolecHub"
+          className="h-20 w-20 object-contain shadow-2xl"
         />
         <span className="absolute -right-2 -top-2 inline-flex h-4 w-4 rounded-full bg-emerald-500 opacity-80 animate-ping" />
         <span className="absolute -right-2 -top-2 inline-flex h-2 w-2 rounded-full bg-emerald-700" />

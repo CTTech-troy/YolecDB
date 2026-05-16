@@ -122,23 +122,23 @@ export default function NewsletterPage() {
         </div>
 
         {loading ? (
-          <p className="text-center text-gray-500 py-10">Loading subscribers...</p>
+          <p className="text-center text-slate-500 dark:text-slate-400 py-10">Loading subscribers...</p>
         ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="dashboard-table-wrap">
+          <table className="dashboard-table">
             <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                <th className="text-left py-3 px-4 font-semibold text-gray-700">Subscription Date</th>
+              <tr>
+                <th>Email</th>
+                <th>Subscription Date</th>
               </tr>
             </thead>
             <tbody>
               {paginatedSubscribers.map((subscriber) => {
                 const formattedDate = new Date(subscriber.subscriptionDate).toLocaleDateString();
                 return (
-                  <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4 text-gray-700">{subscriber.email}</td>
-                    <td className="py-4 px-4 text-sm text-gray-600">{formattedDate}</td>
+                  <tr key={subscriber.id}>
+                    <td className="font-medium text-slate-900 dark:text-slate-100">{subscriber.email}</td>
+                    <td className="text-slate-500 dark:text-slate-400">{formattedDate}</td>
                   </tr>
                 );
               })}
@@ -148,8 +148,8 @@ export default function NewsletterPage() {
         )}
 
         {totalPages > 1 && (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm text-gray-600 order-2 sm:order-1">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-6 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+            <p className="text-sm text-slate-600 dark:text-slate-400 order-2 sm:order-1">
               Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredSubscribers.length)} of {filteredSubscribers.length} results
             </p>
             <div className="flex items-center justify-center gap-2 order-1 sm:order-2">

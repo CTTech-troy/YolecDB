@@ -34,18 +34,18 @@ export default function BlogRegistrationsPage() {
   }, [load]);
 
   if (loading) {
-    return <p className="text-center text-gray-500 py-12">Loading registrations…</p>;
+    return <p className="text-center text-slate-500 dark:text-slate-400 py-12">Loading registrations…</p>;
   }
 
   if (error) {
-    return <p className="text-red-600 text-sm">{error}</p>;
+    return <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>;
   }
 
   if (groups.length === 0) {
     return (
       <div className="min-w-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Blog registrations</h1>
-        <p className="text-gray-600 mt-2 text-sm sm:text-base">No registrations yet.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Blog registrations</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-2 text-sm sm:text-base">No registrations yet.</p>
       </div>
     );
   }
@@ -53,42 +53,42 @@ export default function BlogRegistrationsPage() {
   return (
     <div className="space-y-8 sm:space-y-10 min-w-0">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Blog registrations</h1>
-        <p className="text-gray-600 mt-1 text-sm sm:text-base">Entries grouped by blog</p>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">Blog registrations</h1>
+        <p className="text-slate-600 dark:text-slate-400 mt-1 text-sm sm:text-base">Entries grouped by blog</p>
       </div>
 
       {groups.map((g) => (
-        <section key={g.blogId} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="border-b border-gray-100 bg-gray-50 px-4 py-3 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold text-gray-900">{g.blogTitle}</h2>
-            <p className="text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{g.count}</span> registration
+        <section key={g.blogId} className="dashboard-table-section">
+          <div className="dashboard-table-section-header">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{g.blogTitle}</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-slate-900 dark:text-white">{g.count}</span> registration
               {g.count === 1 ? '' : 's'}
             </p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+          <div className="dashboard-table-wrap">
+            <table className="dashboard-table">
               <thead>
-                <tr className="text-left text-gray-600 border-b border-gray-100">
-                  <th className="px-4 py-2 font-medium">Name</th>
-                  <th className="px-4 py-2 font-medium">Email</th>
-                  <th className="px-4 py-2 font-medium">Number</th>
-                  <th className="px-4 py-2 font-medium">School</th>
-                  <th className="px-4 py-2 font-medium">Level</th>
-                  <th className="px-4 py-2 font-medium">Location</th>
-                  <th className="px-4 py-2 font-medium">Date</th>
+                <tr>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Number</th>
+                  <th>School</th>
+                  <th>Level</th>
+                  <th>Location</th>
+                  <th>Date</th>
                 </tr>
               </thead>
               <tbody>
                 {(g.registrations || []).map((r) => (
-                  <tr key={r.id} className="border-b border-gray-50 hover:bg-gray-50/80">
-                    <td className="px-4 py-2 text-gray-900">{r.name || '—'}</td>
-                    <td className="px-4 py-2 text-gray-700">{r.email || '—'}</td>
-                    <td className="px-4 py-2 text-gray-700">{r.number || '—'}</td>
-                    <td className="px-4 py-2 text-gray-700">{r.school || '—'}</td>
-                    <td className="px-4 py-2 text-gray-700">{r.level || '—'}</td>
-                    <td className="px-4 py-2 text-gray-700">{r.location || '—'}</td>
-                    <td className="px-4 py-2 text-gray-600 whitespace-nowrap">
+                  <tr key={r.id}>
+                    <td className="font-medium text-slate-900 dark:text-slate-100">{r.name || '—'}</td>
+                    <td>{r.email || '—'}</td>
+                    <td>{r.number || '—'}</td>
+                    <td>{r.school || '—'}</td>
+                    <td>{r.level || '—'}</td>
+                    <td>{r.location || '—'}</td>
+                    <td className="whitespace-nowrap text-slate-500 dark:text-slate-400">
                       {formatDate(r.createdAt)}
                     </td>
                   </tr>

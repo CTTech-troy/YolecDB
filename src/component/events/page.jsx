@@ -186,32 +186,32 @@ export default function EventsSubscribersPage() {
           <div className="text-center text-gray-500 py-10">Loading subscribers...</div>
         ) : (
           <>
-            <div className="w-full overflow-x-auto">
-              <table className="min-w-full">
+            <div className="dashboard-table-wrap w-full">
+              <table className="dashboard-table">
                 <thead className="hidden sm:table-header-group">
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Full Name</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Phone Number</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">School/Institution</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Event</th>
+                  <tr>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>School/Institution</th>
+                    <th>Event</th>
                   </tr>
                 </thead>
                 <tbody>
                   {paginatedSubscribers.map((subscriber) => (
-                    <tr key={subscriber.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4 text-gray-700 hidden sm:table-cell">
+                    <tr key={subscriber.id}>
+                      <td className="hidden font-medium text-slate-900 dark:text-slate-100 sm:table-cell">
                         {subscriber.firstName || subscriber.lastName
                           ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim()
                           : subscriber.name || ''}
                       </td>
-                      <td className="py-4 px-4 text-gray-700 hidden sm:table-cell">{subscriber.email || ''}</td>
-                      <td className="py-4 px-4 text-gray-700 hidden sm:table-cell">{subscriber.phone || ''}</td>
-                      <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">{subscriber.school || subscriber.institution || ''}</td>
-                      <td className="py-4 px-4 text-sm text-gray-600 hidden sm:table-cell">{subscriber.event || ''}</td>
+                      <td className="hidden sm:table-cell">{subscriber.email || ''}</td>
+                      <td className="hidden sm:table-cell">{subscriber.phone || ''}</td>
+                      <td className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">{subscriber.school || subscriber.institution || ''}</td>
+                      <td className="hidden text-slate-500 dark:text-slate-400 sm:table-cell">{subscriber.event || ''}</td>
 
-                      <td className="py-4 px-4 text-gray-700 sm:hidden" colSpan={7}>
-                        <div className="flex flex-col gap-2 border rounded-lg p-3 bg-gray-50 overflow-hidden">
+                      <td className="sm:hidden" colSpan={7}>
+                        <div className="flex flex-col gap-2 overflow-hidden rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
                           <div><span className="font-semibold">Full Name: </span>{subscriber.firstName || subscriber.lastName ? `${subscriber.firstName || ''} ${subscriber.lastName || ''}`.trim() : subscriber.name || ''}</div>
                           <div><span className="font-semibold">Email: </span>{subscriber.email || ''}</div>
                           <div><span className="font-semibold">Phone: </span>{subscriber.phone || ''}</div>

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import Sidebar from '../component/Sidebar/sidebar';
-import AdminDashboard from '../../page'; // Adjust the import path as necessary
+import Sidebar from '@/component/Sidebar/Sidebar.jsx';
 export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');

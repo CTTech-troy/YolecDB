@@ -331,17 +331,17 @@ export default function GalleryPage() {
                 ) : images.length === 0 ? (
                     <p className="text-sm text-gray-500">No entries yet.</p>
                 ) : (
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                        <table className="min-w-full text-sm">
-                            <thead className="bg-gray-50 border-b border-gray-200">
+                    <div className="dashboard-table-wrap rounded-lg border border-slate-200/80 dark:border-slate-800">
+                        <table className="dashboard-table">
+                            <thead>
                                 <tr>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700">Title</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Published</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Responses</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Reg. form</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Regs</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Event link</th>
-                                    <th className="text-left py-2 px-3 font-medium text-gray-700 whitespace-nowrap">Reg. link</th>
+                                    <th>Title</th>
+                                    <th className="whitespace-nowrap">Published</th>
+                                    <th className="whitespace-nowrap">Responses</th>
+                                    <th className="whitespace-nowrap">Reg. form</th>
+                                    <th className="whitespace-nowrap">Regs</th>
+                                    <th className="whitespace-nowrap">Event link</th>
+                                    <th className="whitespace-nowrap">Reg. link</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -349,8 +349,8 @@ export default function GalleryPage() {
                                     const listed = isListedOnEventsPage(row);
                                     const count = listed ? (regStats.eventCounts?.[row.id] ?? 0) : 0;
                                     return (
-                                    <tr key={row.id} className="border-b border-gray-100">
-                                        <td className="py-2 px-3 text-gray-800 max-w-[10rem] sm:max-w-xs truncate">{row.title || '—'}</td>
+                                    <tr key={row.id}>
+                                        <td className="max-w-[10rem] truncate font-medium text-slate-900 dark:text-slate-100 sm:max-w-xs">{row.title || '—'}</td>
                                         <td className="py-2 px-3">
                                             {listed ? (
                                                 <label className="inline-flex items-center gap-2 cursor-pointer">
@@ -360,10 +360,10 @@ export default function GalleryPage() {
                                                         checked={row.publish === true || row.status === 'published'}
                                                         onChange={(e) => patchPublish(row.id, e.target.checked)}
                                                     />
-                                                    <span className="text-gray-600">Live</span>
+                                                    <span className="text-slate-600 dark:text-slate-300">Live</span>
                                                 </label>
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <span className="text-slate-400 dark:text-slate-500">—</span>
                                             )}
                                         </td>
                                         <td className="py-2 px-3">
@@ -375,7 +375,7 @@ export default function GalleryPage() {
                                                     onChange={(e) => patchTakingResponses(row.id, e.target.checked)}
                                                     disabled={!listed}
                                                 />
-                                                <span className="text-gray-600">Open</span>
+                                                <span className="text-slate-600 dark:text-slate-300">Open</span>
                                             </label>
                                         </td>
                                         <td className="py-2 px-3">
@@ -387,13 +387,13 @@ export default function GalleryPage() {
                                                         checked={row.registrationEnabled === true}
                                                         onChange={(e) => patchRegistrationEnabled(row.id, e.target.checked)}
                                                     />
-                                                    <span className="text-gray-600">On</span>
+                                                    <span className="text-slate-600 dark:text-slate-300">On</span>
                                                 </label>
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <span className="text-slate-400 dark:text-slate-500">—</span>
                                             )}
                                         </td>
-                                        <td className="py-2 px-3 tabular-nums text-gray-700">{listed ? count : '—'}</td>
+                                        <td className="tabular-nums">{listed ? count : '—'}</td>
                                         <td className="py-2 px-3">
                                             {listed ? (
                                                 <Button
@@ -405,7 +405,7 @@ export default function GalleryPage() {
                                                     Copy link
                                                 </Button>
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <span className="text-slate-400 dark:text-slate-500">—</span>
                                             )}
                                         </td>
                                         <td className="py-2 px-3">
@@ -419,7 +419,7 @@ export default function GalleryPage() {
                                                     Copy /reg
                                                 </Button>
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <span className="text-slate-400 dark:text-slate-500">—</span>
                                             )}
                                         </td>
                                     </tr>
@@ -474,9 +474,19 @@ export default function GalleryPage() {
                 isOpen={isModalOpen}
                 onClose={closeModal}
                 title={editingId ? 'Edit entry' : 'Add entry'}
-                maxWidth="max-w-lg"
+                maxWidth="max-w-2xl"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={closeModal} className="w-full sm:flex-1">
+                            <i className="ri-close-line mr-2"></i> Cancel
+                        </Button>
+                        <Button onClick={handleSave} className="w-full sm:flex-1">
+                            <i className="ri-save-line mr-2"></i> {editingId ? 'Update' : 'Save'}
+                        </Button>
+                    </>
+                }
             >
-                <div className="space-y-4 overflow-y-auto max-h-[80vh] pr-2">
+                <div className="space-y-4">
                     <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
                         <input
                             type="checkbox"
@@ -653,14 +663,6 @@ export default function GalleryPage() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Image *</label>
                         <ImageUpload onImageSelect={handleImageSelect} preview={imagePreview} />
-                    </div>
-                    <div className="flex flex-col-reverse sm:flex-row flex-wrap gap-2 sm:gap-3 pt-4">
-                        <Button variant="secondary" onClick={closeModal} className="w-full sm:flex-1">
-                            <i className="ri-close-line mr-2"></i> Cancel
-                        </Button>
-                        <Button onClick={handleSave} className="w-full sm:flex-1">
-                            <i className="ri-save-line mr-2"></i> {editingId ? 'Update' : 'Save'}
-                        </Button>
                     </div>
                 </div>
             </Modal>
