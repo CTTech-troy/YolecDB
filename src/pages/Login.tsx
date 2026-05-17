@@ -7,16 +7,22 @@ import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 import { useAuth } from '@/context/AuthContext';
+import { authApi } from '@/api/auth';
 import { Button, Input, Card } from '@/components/ui';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { toast } from 'react-hot-toast';
 import { BrandLogo } from '@/components/layout/BrandLogo';
 
+type AuthMode = 'login' | 'reset';
+
 export function LoginPage() {
   const navigate = useNavigate();
   const { user, authUser, loading: authLoading, homeRoute } = useAuth();
+  const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetKey, setResetKey] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -42,7 +48,6 @@ export function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       toast.success('Login successful');
     } catch (error: any) {
-      console.error('Login error:', error);
       let message = 'Failed to login';
 
       if (error.code === 'auth/invalid-credential') {
@@ -61,6 +66,41 @@ export function LoginPage() {
     }
   };
 
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await authApi.resetPassword({
+        email,
+        resetKey,
+        password,
+        confirmPassword,
+      });
+      toast.success('Password reset. You can sign in now.');
+      setMode('login');
+      setPassword('');
+      setConfirmPassword('');
+      setResetKey('');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchMode = (nextMode: AuthMode) => {
+    setMode(nextMode);
+    setPassword('');
+    setConfirmPassword('');
+    setResetKey('');
+  };
+
   return (
     <div className="relative flex min-h-dvh items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 px-4 py-8 dark:from-slate-950 dark:to-slate-900">
       <div className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))]">
@@ -75,15 +115,20 @@ export function LoginPage() {
         {/* Title */}
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome Back
+            {mode === 'login' ? 'Welcome Back' : 'Reset Password'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Sign in to YolecHub Dashboard
+            {mode === 'login'
+              ? 'Sign in to YolecHub Dashboard'
+              : 'Enter the Super Admin reset key to continue'}
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form
+          onSubmit={mode === 'login' ? handleSubmit : handleResetPassword}
+          className="space-y-4"
+        >
           <Input
             label="Email"
             type="email"
@@ -94,15 +139,45 @@ export function LoginPage() {
             disabled={loading}
           />
 
+          {mode === 'reset' && (
+            <Input
+              label="Reset key"
+              type="password"
+              value={resetKey}
+              onChange={(e) => setResetKey(e.target.value)}
+              placeholder="Enter reset key"
+              required
+              minLength={16}
+              autoComplete="off"
+              disabled={loading}
+            />
+          )}
+
           <Input
-            label="Password"
+            label={mode === 'login' ? 'Password' : 'New password'}
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
+            placeholder={mode === 'login' ? 'Enter your password' : 'Create a new password'}
             required
+            minLength={mode === 'reset' ? 8 : undefined}
+            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             disabled={loading}
           />
+
+          {mode === 'reset' && (
+            <Input
+              label="Confirm new password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm your new password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              disabled={loading}
+            />
+          )}
 
           <Button
             type="submit"
@@ -110,9 +185,29 @@ export function LoginPage() {
             loading={loading}
             size="lg"
           >
-            Sign In
+            {mode === 'login' ? 'Sign In' : 'Reset Password'}
           </Button>
         </form>
+
+        <div className="mt-4 text-center">
+          {mode === 'login' ? (
+            <button
+              type="button"
+              onClick={() => switchMode('reset')}
+              className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              Forgot password?
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => switchMode('login')}
+              className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              Back to sign in
+            </button>
+          )}
+        </div>
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

@@ -25,9 +25,10 @@ import { PermissionGate } from '@/components/shared/PermissionGate';
 import { fileToDataUrlForStorage } from '@/utils/fileToDataUrl';
 import { PERMISSIONS, Event } from '@/types';
 import { tableText, statusBadge, lifecycleBadge } from '@/lib/tableStyles';
+import { PUBLIC_SITE_URL } from '@/config/domains';
 
 const EVENT_CATEGORIES = ['Conferences', 'Workshops', 'Summits', 'Virtual'];
-const siteBase = (import.meta.env.VITE_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const siteBase = PUBLIC_SITE_URL;
 
 function registerUrl(id: string) {
   return siteBase ? `${siteBase}/register/${id}` : `/register/${id}`;

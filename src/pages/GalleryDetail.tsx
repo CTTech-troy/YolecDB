@@ -4,8 +4,9 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button, Card } from '@/components/ui';
 import { isEventListing, isGalleryItem } from '@/lib/galleryUtils';
 import { statusBadge } from '@/lib/tableStyles';
+import { PUBLIC_SITE_URL } from '@/config/domains';
 
-const siteBase = (import.meta.env.VITE_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const siteBase = PUBLIC_SITE_URL;
 
 export function GalleryDetailPage() {
   const { id } = useParams<{ id: string }>();

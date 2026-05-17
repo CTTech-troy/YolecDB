@@ -20,8 +20,9 @@ import {
 import { PermissionGate } from '@/components/shared/PermissionGate';
 import { fileToDataUrlForStorage } from '@/utils/fileToDataUrl';
 import { PERMISSIONS, Blog } from '@/types';
+import { PUBLIC_SITE_URL } from '@/config/domains';
 
-const siteBase = (import.meta.env.VITE_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const siteBase = PUBLIC_SITE_URL;
 
 function registrationUrl(blogId: string) {
   return siteBase ? `${siteBase}/register/${blogId}` : `/register/${blogId}`;

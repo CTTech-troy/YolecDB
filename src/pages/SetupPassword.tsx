@@ -67,7 +67,7 @@ export function SetupPasswordPage() {
       </div>
       <Card className="w-full max-w-md" padding="lg">
         {loading ? (
-          <p className="text-center text-slate-500">Validating invitation…</p>
+          <p className="text-center text-slate-500">Validating invitation...</p>
         ) : invalid ? (
           <div className="text-center space-y-4">
             <h1 className="text-xl font-bold text-slate-900 dark:text-white">Invalid link</h1>
@@ -87,7 +87,7 @@ export function SetupPasswordPage() {
               </div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Create your password</h1>
               <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                {invite?.fullName} · {invite?.roleDisplayName}
+                {invite?.fullName} - {invite?.roleDisplayName}
               </p>
               <p className="text-xs text-slate-500">{invite?.email}</p>
             </div>

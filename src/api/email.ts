@@ -1,8 +1,9 @@
 import { auth } from '@/config/firebase';
+import { getApiBaseUrl } from '@/config/domains';
 import { apiClient, resolveApiUrl } from '@/lib/apiClient';
 import { PaginatedResponse } from '@/types';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
+const API_BASE = getApiBaseUrl();
 
 export type EmailTemplateId =
   | 'newsletter'

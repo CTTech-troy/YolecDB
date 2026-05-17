@@ -1,4 +1,5 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, resolveApiUrl } from '@/lib/apiClient';
+import { getApiBaseUrl } from '@/config/domains';
 import type { PaginatedResponse } from '@/types';
 
 export type LogLevel = 'INFO' | 'WARN' | 'ERROR' | 'CRITICAL' | 'DEBUG';
@@ -74,11 +75,9 @@ export const systemLogsApi = {
     if (params.from) q.set('from', String(params.from));
     if (params.to) q.set('to', String(params.to));
     q.set('format', params.format ?? 'csv');
-    const base =
-      import.meta.env.VITE_API_BASE_URL ||
-      import.meta.env.VITE_API_URL ||
-      'http://localhost:4000';
-    const root = base.replace(/\/$/, '');
-    return `${root}/api/mgmt/system-logs/export?${q.toString()}`;
+    return resolveApiUrl(
+      getApiBaseUrl(),
+      `/api/mgmt/system-logs/export?${q.toString()}`
+    );
   },
 };

@@ -4,12 +4,10 @@
 
 import type { User } from 'firebase/auth';
 import { auth } from '@/config/firebase';
+import { getApiBaseUrl } from '@/config/domains';
 import { ApiError } from '@/types';
 
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ||
-  import.meta.env.VITE_API_URL ||
-  'http://localhost:4000';
+export const API_BASE_URL = getApiBaseUrl();
 
 let csrfToken: string | null = null;
 let refreshInFlight: Promise<boolean> | null = null;

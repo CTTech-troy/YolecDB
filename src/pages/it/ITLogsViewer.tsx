@@ -51,7 +51,7 @@ export function ITLogsViewerPage() {
 
       {streamError && (
         <p className="text-sm text-amber-600 dark:text-amber-400">
-          Live stream: {streamError}. Showing loaded history; retrying connection…
+          Live stream: {streamError}. Showing loaded history; retrying connection...
         </p>
       )}
 

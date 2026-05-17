@@ -21,8 +21,9 @@ import { PermissionGate } from '@/components/shared/PermissionGate';
 import { fileToDataUrlForStorage } from '@/utils/fileToDataUrl';
 import { PERMISSIONS, Event } from '@/types';
 import { statusBadge } from '@/lib/tableStyles';
+import { PUBLIC_SITE_URL } from '@/config/domains';
 
-const siteBase = (import.meta.env.VITE_PUBLIC_SITE_URL || '').replace(/\/$/, '');
+const siteBase = PUBLIC_SITE_URL;
 
 export function GalleryPage() {
   const [modalOpen, setModalOpen] = useState(false);

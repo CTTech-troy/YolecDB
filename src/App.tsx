@@ -2,6 +2,7 @@
  * Main App component with TypeScript and RBAC
  */
 
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/context/AuthContext';
@@ -13,36 +14,45 @@ import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
 import { PERMISSIONS } from '@/types';
 
 import { LoginPage } from '@/pages/Login';
-import { DashboardPage } from '@/pages/Dashboard';
-import { BlogsPage } from '@/pages/Blogs';
-import { EventsPage } from '@/pages/Events';
-import { ContactsPage } from '@/pages/Contacts';
-import { TestimonialsPage } from '@/pages/Testimonials';
-import { RegistrationsPage } from '@/pages/Registrations';
-import { EmailPage } from '@/pages/Email';
-import { AnalyticsPage } from '@/pages/Analytics';
-import { UsersPage } from '@/pages/Users';
-import { RolesPage } from '@/pages/Roles';
-import { AuditLogsPage } from '@/pages/AuditLogs';
-import { GalleryPage } from '@/pages/Gallery';
-import { GalleryDetailPage } from '@/pages/GalleryDetail';
-import { EventLivePage } from '@/pages/EventLive';
-import { AdsPage } from '@/pages/Ads';
-import { TicketsPage } from '@/pages/Tickets';
-import { TicketDetailPage } from '@/pages/TicketDetail';
 import { SetupPasswordPage } from '@/pages/SetupPassword';
-import { MediaOverviewPage } from '@/pages/media/MediaOverview';
-import { ITOverviewPage } from '@/pages/it/ITOverview';
-import { ITApiLatencyPage } from '@/pages/it/ITApiLatency';
-import { ITDatabasePage } from '@/pages/it/ITDatabase';
-import { ITAuditPage } from '@/pages/it/ITAudit';
-import { ITIncidentsPage } from '@/pages/it/ITIncidents';
-import { ITIncidentDetailPage } from '@/pages/it/ITIncidentDetail';
-import { ITBackupsPage } from '@/pages/it/ITBackups';
-import { ITSecurityPage } from '@/pages/it/ITSecurity';
-import { ITLogsViewerPage } from '@/pages/it/ITLogsViewer';
 
 import './global.css';
+
+const DashboardPage = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.DashboardPage })));
+const BlogsPage = lazy(() => import('@/pages/Blogs').then((m) => ({ default: m.BlogsPage })));
+const EventsPage = lazy(() => import('@/pages/Events').then((m) => ({ default: m.EventsPage })));
+const ContactsPage = lazy(() => import('@/pages/Contacts').then((m) => ({ default: m.ContactsPage })));
+const TestimonialsPage = lazy(() => import('@/pages/Testimonials').then((m) => ({ default: m.TestimonialsPage })));
+const RegistrationsPage = lazy(() => import('@/pages/Registrations').then((m) => ({ default: m.RegistrationsPage })));
+const EmailPage = lazy(() => import('@/pages/Email').then((m) => ({ default: m.EmailPage })));
+const AnalyticsPage = lazy(() => import('@/pages/Analytics').then((m) => ({ default: m.AnalyticsPage })));
+const UsersPage = lazy(() => import('@/pages/Users').then((m) => ({ default: m.UsersPage })));
+const RolesPage = lazy(() => import('@/pages/Roles').then((m) => ({ default: m.RolesPage })));
+const AuditLogsPage = lazy(() => import('@/pages/AuditLogs').then((m) => ({ default: m.AuditLogsPage })));
+const GalleryPage = lazy(() => import('@/pages/Gallery').then((m) => ({ default: m.GalleryPage })));
+const GalleryDetailPage = lazy(() => import('@/pages/GalleryDetail').then((m) => ({ default: m.GalleryDetailPage })));
+const EventLivePage = lazy(() => import('@/pages/EventLive').then((m) => ({ default: m.EventLivePage })));
+const AdsPage = lazy(() => import('@/pages/Ads').then((m) => ({ default: m.AdsPage })));
+const TicketsPage = lazy(() => import('@/pages/Tickets').then((m) => ({ default: m.TicketsPage })));
+const TicketDetailPage = lazy(() => import('@/pages/TicketDetail').then((m) => ({ default: m.TicketDetailPage })));
+const MediaOverviewPage = lazy(() => import('@/pages/media/MediaOverview').then((m) => ({ default: m.MediaOverviewPage })));
+const ITOverviewPage = lazy(() => import('@/pages/it/ITOverview').then((m) => ({ default: m.ITOverviewPage })));
+const ITApiLatencyPage = lazy(() => import('@/pages/it/ITApiLatency').then((m) => ({ default: m.ITApiLatencyPage })));
+const ITDatabasePage = lazy(() => import('@/pages/it/ITDatabase').then((m) => ({ default: m.ITDatabasePage })));
+const ITAuditPage = lazy(() => import('@/pages/it/ITAudit').then((m) => ({ default: m.ITAuditPage })));
+const ITIncidentsPage = lazy(() => import('@/pages/it/ITIncidents').then((m) => ({ default: m.ITIncidentsPage })));
+const ITIncidentDetailPage = lazy(() => import('@/pages/it/ITIncidentDetail').then((m) => ({ default: m.ITIncidentDetailPage })));
+const ITBackupsPage = lazy(() => import('@/pages/it/ITBackups').then((m) => ({ default: m.ITBackupsPage })));
+const ITSecurityPage = lazy(() => import('@/pages/it/ITSecurity').then((m) => ({ default: m.ITSecurityPage })));
+const ITLogsViewerPage = lazy(() => import('@/pages/it/ITLogsViewer').then((m) => ({ default: m.ITLogsViewerPage })));
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
+    </div>
+  );
+}
 
 function AppContent() {
   return (
@@ -50,10 +60,11 @@ function AppContent() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <div className="min-h-dvh bg-slate-50 dark:bg-slate-950">
-            <Routes>
-              <Route element={<AuthShell />}>
-                <Route path="/" element={<LoginPage />} />
-                <Route path="/setup-password" element={<SetupPasswordPage />} />
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route element={<AuthShell />}>
+                  <Route path="/" element={<LoginPage />} />
+                  <Route path="/setup-password" element={<SetupPasswordPage />} />
 
                 <Route
                   path="/media"
@@ -337,8 +348,9 @@ function AppContent() {
                     </ProtectedRoute>
                   }
                 />
-              </Route>
-            </Routes>
+                </Route>
+              </Routes>
+            </Suspense>
 
             <AppToaster />
           </div>

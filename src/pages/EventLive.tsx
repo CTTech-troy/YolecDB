@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { Button, Card, Input } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useEvent } from '@/hooks/useEvents';
+import { PUBLIC_SITE_URL } from '@/config/domains';
 
 export function EventLivePage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -200,7 +201,7 @@ export function EventLivePage() {
               End live
             </Button>
             <a
-              href={`${import.meta.env.VITE_PUBLIC_SITE_URL || ''}/event/${eventId}`}
+              href={`${PUBLIC_SITE_URL}/event/${eventId}`}
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center text-sm text-indigo-600 hover:underline dark:text-indigo-400"

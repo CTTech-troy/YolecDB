@@ -1,4 +1,5 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient, resolveApiUrl } from '@/lib/apiClient';
+import { getApiBaseUrl } from '@/config/domains';
 
 const reported = new Set<string>();
 
@@ -19,8 +20,7 @@ export async function reportClientIncident(payload: {
   if (reported.has(fp)) return;
   reported.add(fp);
 
-  const base = import.meta.env.VITE_API_BASE_URL?.replace(/\/mgmt$/, '').replace(/\/$/, '') ?? '';
-  const url = `${base}/api/public/incidents/report`;
+  const url = resolveApiUrl(getApiBaseUrl(), '/api/public/incidents/report');
 
   try {
     await fetch(url, {
