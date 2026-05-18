@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --configLoader runner",
-    "build": "tsc && vite build --configLoader runner",
+    "dev": "vite --configLoader native",
+    "build": "tsc && vite build --configLoader native",
     "lint": "eslint .",
-    "preview": "vite preview --configLoader runner",
+    "preview": "vite preview --configLoader native",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
