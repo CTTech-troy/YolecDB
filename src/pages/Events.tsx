@@ -126,18 +126,26 @@ export function EventsPage() {
       whatsappLink: form.whatsappLink.trim() || undefined,
       publish: form.publish,
     };
-    if (editing) {
-      await updateMutation.mutateAsync({ id: editing.id, data: payload });
-    } else {
-      await createMutation.mutateAsync(payload);
+    try {
+      if (editing) {
+        await updateMutation.mutateAsync({ id: editing.id, data: payload });
+      } else {
+        await createMutation.mutateAsync(payload);
+      }
+      closeModal();
+    } catch {
+      // Error toast is handled by the mutation hook.
     }
-    closeModal();
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
-      setDeleteId(null);
+      try {
+        await deleteMutation.mutateAsync(deleteId);
+        setDeleteId(null);
+      } catch {
+        // Error toast is handled by the mutation hook.
+      }
     }
   };
 

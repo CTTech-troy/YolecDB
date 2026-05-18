@@ -68,26 +68,34 @@ export function RolesPage() {
 
   const handleSave = async () => {
     if (!form.displayName.trim()) return;
-    if (editing) {
-      await updateMutation.mutateAsync({
-        id: editing.id,
-        data: { displayName: form.displayName, permissions: form.permissions },
-      });
-    } else {
-      if (!form.name.trim()) return;
-      await createMutation.mutateAsync({
-        name: form.name.trim(),
-        displayName: form.displayName.trim(),
-        permissions: form.permissions,
-      });
+    try {
+      if (editing) {
+        await updateMutation.mutateAsync({
+          id: editing.id,
+          data: { displayName: form.displayName, permissions: form.permissions },
+        });
+      } else {
+        if (!form.name.trim()) return;
+        await createMutation.mutateAsync({
+          name: form.name.trim(),
+          displayName: form.displayName.trim(),
+          permissions: form.permissions,
+        });
+      }
+      setModalOpen(false);
+    } catch {
+      // Error toast is handled by the mutation hook.
     }
-    setModalOpen(false);
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
-      setDeleteId(null);
+      try {
+        await deleteMutation.mutateAsync(deleteId);
+        setDeleteId(null);
+      } catch {
+        // Error toast is handled by the mutation hook.
+      }
     }
   };
 

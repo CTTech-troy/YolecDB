@@ -31,7 +31,7 @@ export const blogsApi = {
    * Update a blog
    */
   async update(id: string, data: Partial<CreateBlogDto>): Promise<{ success: boolean }> {
-    return apiClient.patch(`/api/mgmt/blog/${id}`, data);
+    return apiClient.put(`/api/mgmt/blog/${id}`, data);
   },
 
   /**

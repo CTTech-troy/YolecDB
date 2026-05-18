@@ -38,6 +38,18 @@ function findRole(roles: Role[], roleId: string) {
   return roles.find((r) => r.id === roleId);
 }
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
+function getInviteErrorMessage(error: unknown) {
+  const message = getErrorMessage(error, 'Could not send the invitation right now.');
+  if (/already exists/i.test(message)) {
+    return 'A dashboard user already exists with this email.';
+  }
+  return message;
+}
+
 export function UsersPage() {
   const { authUser } = useAuth();
   const [page, setPage] = useState(1);
@@ -49,6 +61,7 @@ export function UsersPage() {
     displayName: '',
     roleId: '',
   });
+  const [createError, setCreateError] = useState('');
   const [selectedRoleId, setSelectedRoleId] = useState('');
 
   const { data, isLoading } = useUsers(page, 20);
@@ -63,29 +76,65 @@ export function UsersPage() {
   const systemRoleNames = new Set(SYSTEM_ROLE_ORDER);
   const systemRoles = roles.filter((r) => systemRoleNames.has(r.name)).sort(sortSystemRoles);
   const roleOptions = [
-    { value: '', label: 'Select a role…' },
+    { value: '', label: 'Select a role...' },
     ...systemRoles.map((r) => ({ value: r.id, label: formatRoleLabel(r) })),
   ];
   const selectedInviteRole = form.roleId ? findRole(roles, form.roleId) : null;
   const selectedEditRole = selectedRoleId ? findRole(roles, selectedRoleId) : null;
 
-  const handleCreate = async () => {
-    if (!form.email || !form.roleId) return;
-    const role = findRole(roles, form.roleId);
-    await createMutation.mutateAsync({
-      email: form.email,
-      displayName: form.displayName || form.email,
-      roleId: form.roleId,
-      roleLabel: role ? formatRoleLabel(role) : undefined,
-    });
+  const closeCreateModal = () => {
     setCreateOpen(false);
-    setForm({ email: '', displayName: '', roleId: '' });
+    setCreateError('');
+  };
+
+  const openCreateModal = () => {
+    setCreateError('');
+    setCreateOpen(true);
+  };
+
+  const updateCreateForm = (patch: Partial<typeof form>) => {
+    setCreateError('');
+    setForm((current) => ({ ...current, ...patch }));
+  };
+
+  const handleCreate = async () => {
+    const email = form.email.trim();
+    const displayName = form.displayName.trim();
+    setCreateError('');
+
+    if (!email) {
+      setCreateError('Enter an email address.');
+      return;
+    }
+
+    if (!form.roleId) {
+      setCreateError('Select a role for this user.');
+      return;
+    }
+
+    const role = findRole(roles, form.roleId);
+    try {
+      await createMutation.mutateAsync({
+        email,
+        displayName: displayName || email,
+        roleId: form.roleId,
+        roleLabel: role ? formatRoleLabel(role) : undefined,
+      });
+      closeCreateModal();
+      setForm({ email: '', displayName: '', roleId: '' });
+    } catch (error) {
+      setCreateError(getInviteErrorMessage(error));
+    }
   };
 
   const saveRole = async () => {
     if (!roleEdit || !selectedRoleId) return;
-    await updateRoleMutation.mutateAsync({ uid: roleEdit.uid, roleId: selectedRoleId });
-    setRoleEdit(null);
+    try {
+      await updateRoleMutation.mutateAsync({ uid: roleEdit.uid, roleId: selectedRoleId });
+      setRoleEdit(null);
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const sessionRole = authUser ? findRole(roles, authUser.roleId) : null;
@@ -202,7 +251,7 @@ export function UsersPage() {
         description="Manage dashboard users and roles"
         action={
           <PermissionGate permission={PERMISSIONS.CREATE_USER}>
-            <Button icon="ri-user-add-line" onClick={() => setCreateOpen(true)}>
+            <Button icon="ri-user-add-line" onClick={openCreateModal}>
               Add user
             </Button>
           </PermissionGate>
@@ -269,11 +318,11 @@ export function UsersPage() {
 
       <Modal
         isOpen={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreateModal}
         title="Invite user"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>
+            <Button variant="ghost" onClick={closeCreateModal}>
               Cancel
             </Button>
             <Button onClick={handleCreate} loading={createMutation.isPending}>
@@ -283,17 +332,25 @@ export function UsersPage() {
         }
       >
         <div className="space-y-4">
+          {createError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-950/40 dark:text-red-300"
+            >
+              {createError}
+            </div>
+          )}
           <Input
             label="Email"
             type="email"
             value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            onChange={(e) => updateCreateForm({ email: e.target.value })}
             required
           />
           <Input
             label="Full name"
             value={form.displayName}
-            onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+            onChange={(e) => updateCreateForm({ displayName: e.target.value })}
             required
           />
           <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -303,7 +360,7 @@ export function UsersPage() {
           <Select
             label="Role"
             value={form.roleId}
-            onChange={(e) => setForm((f) => ({ ...f, roleId: e.target.value }))}
+            onChange={(e) => updateCreateForm({ roleId: e.target.value })}
             options={roleOptions}
             required
           />
@@ -349,7 +406,7 @@ export function UsersPage() {
         />
         {selectedEditRole && roleEdit && (
           <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-            {roleEdit.displayName || roleEdit.email} →{' '}
+            {roleEdit.displayName || roleEdit.email} {'->'}{' '}
             <span className={roleBadgeClass(selectedEditRole.name)}>
               {formatRoleLabel(selectedEditRole)}
             </span>
@@ -362,8 +419,12 @@ export function UsersPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={async () => {
           if (!deleteTarget) return;
-          await deleteMutation.mutateAsync(deleteTarget.uid);
-          setDeleteTarget(null);
+          try {
+            await deleteMutation.mutateAsync(deleteTarget.uid);
+            setDeleteTarget(null);
+          } catch {
+            // Error toast is handled by the mutation hook.
+          }
         }}
         title="Delete user permanently?"
         message={

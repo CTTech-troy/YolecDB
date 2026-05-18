@@ -29,10 +29,9 @@ export function useCreateUser() {
       if (data.inviteSent) {
         toast.success(`Invitation sent to ${vars.email}${rolePart}`);
       } else {
-        toast.success(`User created${rolePart} — invitation email could not be sent`);
+        toast.success(`User created${rolePart} - invitation email could not be sent`);
       }
     },
-    onError: (e: Error) => toast.error(e.message || 'Failed to create user'),
   });
 }
 

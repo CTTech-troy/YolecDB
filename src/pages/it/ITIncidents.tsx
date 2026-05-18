@@ -59,18 +59,26 @@ export function ITIncidentsPage() {
 
   const handleCreate = async () => {
     if (!form.title || !form.description) return;
-    await createMutation.mutateAsync({
-      title: form.title,
-      description: form.description,
-      severity: form.severity,
-      assignee: form.assignee || undefined,
-    });
-    setOpen(false);
-    setForm({ title: '', description: '', severity: 'medium', assignee: '' });
+    try {
+      await createMutation.mutateAsync({
+        title: form.title,
+        description: form.description,
+        severity: form.severity,
+        assignee: form.assignee || undefined,
+      });
+      setOpen(false);
+      setForm({ title: '', description: '', severity: 'medium', assignee: '' });
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const setStatus = async (incident: ITIncident, status: IncidentStatus) => {
-    await updateMutation.mutateAsync({ id: incident.id, status });
+    try {
+      await updateMutation.mutateAsync({ id: incident.id, status });
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   return (

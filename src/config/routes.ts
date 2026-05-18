@@ -38,6 +38,18 @@ export const routes: RouteConfig[] = [
     permission: PERMISSIONS.MANAGE_BLOG,
   },
   {
+    path: '/blog/authors',
+    label: 'Authors',
+    icon: 'ri-user-star-line',
+    permission: PERMISSIONS.MANAGE_BLOG,
+  },
+  {
+    path: '/blog/comments',
+    label: 'Comments',
+    icon: 'ri-chat-check-line',
+    permission: PERMISSIONS.MODERATE_COMMENTS,
+  },
+  {
     path: '/events',
     label: 'Events',
     icon: 'ri-calendar-event-line',

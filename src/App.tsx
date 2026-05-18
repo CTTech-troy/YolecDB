@@ -20,6 +20,11 @@ import './global.css';
 
 const DashboardPage = lazy(() => import('@/pages/Dashboard').then((m) => ({ default: m.DashboardPage })));
 const BlogsPage = lazy(() => import('@/pages/Blogs').then((m) => ({ default: m.BlogsPage })));
+const BlogEditorPage = lazy(() => import('@/pages/BlogEditor').then((m) => ({ default: m.BlogEditorPage })));
+const AuthorsPage = lazy(() => import('@/pages/Authors').then((m) => ({ default: m.AuthorsPage })));
+const CommentsModerationPage = lazy(() =>
+  import('@/pages/CommentsModeration').then((m) => ({ default: m.CommentsModerationPage }))
+);
 const EventsPage = lazy(() => import('@/pages/Events').then((m) => ({ default: m.EventsPage })));
 const ContactsPage = lazy(() => import('@/pages/Contacts').then((m) => ({ default: m.ContactsPage })));
 const TestimonialsPage = lazy(() => import('@/pages/Testimonials').then((m) => ({ default: m.TestimonialsPage })));
@@ -213,6 +218,38 @@ function AppContent() {
                   element={
                     <ProtectedRoute permission={PERMISSIONS.MANAGE_BLOG}>
                       <BlogsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/blog/new"
+                  element={
+                    <ProtectedRoute permission={PERMISSIONS.CREATE_POST}>
+                      <BlogEditorPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/blog/:id/edit"
+                  element={
+                    <ProtectedRoute permission={PERMISSIONS.EDIT_POST}>
+                      <BlogEditorPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/blog/authors"
+                  element={
+                    <ProtectedRoute permission={PERMISSIONS.MANAGE_BLOG}>
+                      <AuthorsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/blog/comments"
+                  element={
+                    <ProtectedRoute permission={PERMISSIONS.MODERATE_COMMENTS}>
+                      <CommentsModerationPage />
                     </ProtectedRoute>
                   }
                 />

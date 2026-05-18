@@ -345,8 +345,12 @@ export function TestimonialsPage() {
 
   const handleDelete = async () => {
     if (!deleteId) return;
-    await deleteMutation.mutateAsync(deleteId);
-    setDeleteId(null);
+    try {
+      await deleteMutation.mutateAsync(deleteId);
+      setDeleteId(null);
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const columns = [

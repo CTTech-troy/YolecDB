@@ -36,24 +36,31 @@ export function resolveApiUrl(baseUrl: string, endpoint: string): string {
   return `${base}${path}`;
 }
 
+function getPayloadMessage(raw: unknown): string {
+  if (!raw || typeof raw !== 'object') return '';
+  const body = raw as Record<string, unknown>;
+  const directMessage = typeof body.error === 'string' ? body.error : body.message;
+  return typeof directMessage === 'string' ? directMessage.trim() : '';
+}
+
 function parseErrorPayload(raw: unknown, status: number): string {
-  if (raw && typeof raw === 'object') {
-    const body = raw as Record<string, unknown>;
-    if (typeof body.error === 'string' && body.error) return body.error;
-    if (typeof body.message === 'string' && body.message) return body.message;
-    if (Array.isArray(body.details) && body.details.length > 0) {
-      const detail = (body.details as Array<{ message?: string }>)
-        .map((d) => d.message)
-        .filter(Boolean)
-        .join('; ');
-      if (detail) return `${body.error || 'Validation failed'}: ${detail}`;
-    }
+  const payloadMessage = getPayloadMessage(raw);
+
+  if (/already exists/i.test(payloadMessage)) {
+    return 'A record with these details already exists.';
   }
+
+  if (/invalid credentials|wrong password|auth\/invalid/i.test(payloadMessage)) {
+    return 'The email or password is incorrect.';
+  }
+
   if (status === 401) return 'Session expired. Please sign in again.';
   if (status === 403) return 'You do not have permission for this action.';
+  if (status === 404) return 'We could not find that item.';
   if (status === 429) return 'Too many requests. Please wait a moment and try again.';
-  if (status >= 500) return 'Server error. Check that the backend is running on port 4000.';
-  return `Request failed (${status})`;
+  if (status === 400 || status === 422) return 'Please check the information and try again.';
+  if (status >= 500) return 'Something went wrong on our side. Please try again shortly.';
+  return 'We could not complete the request. Please try again.';
 }
 
 function isAuthEndpoint(endpoint: string): boolean {
@@ -137,7 +144,7 @@ export class ApiClient {
     } catch (err) {
       const msg =
         err instanceof TypeError
-          ? `Cannot reach API at ${this.baseUrl}. Start the backend with: npm run dev (in backend folder).`
+          ? 'Cannot reach the server right now. Please check your connection and try again.'
           : err instanceof Error
             ? err.message
             : 'Network request failed';

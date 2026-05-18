@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   useBlogs,
@@ -39,6 +40,7 @@ async function copyRegistrationLink(blogId: string) {
 }
 
 export function BlogsPage() {
+  const navigate = useNavigate();
   const [page] = useState(1);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -91,18 +93,22 @@ export function BlogsPage() {
       toast.error('Please enter a title');
       return;
     }
-    await createMutation.mutateAsync({
-      title: formData.title.trim(),
-      content: formData.content,
-      image: imagePreview || undefined,
-      date: new Date().toISOString().split('T')[0],
-      author: 'Admin',
-      publish: false,
-      registrationEnabled: formData.registrationEnabled,
-      whatsappLink: formData.whatsappLink.trim() || undefined,
-    });
-    setCreateOpen(false);
-    resetForm();
+    try {
+      await createMutation.mutateAsync({
+        title: formData.title.trim(),
+        content: formData.content,
+        image: imagePreview || undefined,
+        date: new Date().toISOString().split('T')[0],
+        author: 'Admin',
+        publish: false,
+        registrationEnabled: formData.registrationEnabled,
+        whatsappLink: formData.whatsappLink.trim() || undefined,
+      });
+      setCreateOpen(false);
+      resetForm();
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const openSettings = (blog: Blog) => {
@@ -115,20 +121,28 @@ export function BlogsPage() {
 
   const saveSettings = async () => {
     if (!settingsBlog) return;
-    await updateMutation.mutateAsync({
-      id: settingsBlog.id,
-      data: {
-        registrationEnabled: settingsForm.registrationEnabled,
-        whatsappLink: settingsForm.whatsappLink.trim() || undefined,
-      },
-    });
-    setSettingsBlog(null);
+    try {
+      await updateMutation.mutateAsync({
+        id: settingsBlog.id,
+        data: {
+          registrationEnabled: settingsForm.registrationEnabled,
+          whatsappLink: settingsForm.whatsappLink.trim() || undefined,
+        },
+      });
+      setSettingsBlog(null);
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
-      setDeleteId(null);
+      try {
+        await deleteMutation.mutateAsync(deleteId);
+        setDeleteId(null);
+      } catch {
+        // Error toast is handled by the mutation hook.
+      }
     }
   };
 
@@ -139,9 +153,14 @@ export function BlogsPage() {
         description="Create and manage blog posts"
         action={
           <PermissionGate permission={PERMISSIONS.CREATE_POST}>
-            <Button icon="ri-add-line" onClick={() => setCreateOpen(true)}>
-              Add New Blog
-            </Button>
+            <div className="flex gap-2">
+              <Button icon="ri-add-line" onClick={() => navigate('/blog/new')}>
+                New article
+              </Button>
+              <Button variant="secondary" onClick={() => setCreateOpen(true)}>
+                Quick add
+              </Button>
+            </div>
           </PermissionGate>
         }
       />
@@ -217,6 +236,16 @@ export function BlogsPage() {
                       }
                     >
                       {blog.publish ? 'Unpublish' : 'Publish'}
+                    </Button>
+                  </PermissionGate>
+                  <PermissionGate permission={PERMISSIONS.EDIT_POST}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() => navigate(`/blog/${blog.id}/edit`)}
+                    >
+                      Edit
                     </Button>
                   </PermissionGate>
                   <PermissionGate permission={PERMISSIONS.EDIT_POST}>
@@ -376,3 +405,4 @@ export function BlogsPage() {
     </div>
   );
 }
+

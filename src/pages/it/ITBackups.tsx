@@ -25,9 +25,13 @@ export function ITBackupsPage() {
   const [label, setLabel] = useState('');
 
   const handleRun = async () => {
-    await runMutation.mutateAsync(label.trim() || undefined);
-    setOpen(false);
-    setLabel('');
+    try {
+      await runMutation.mutateAsync(label.trim() || undefined);
+      setOpen(false);
+      setLabel('');
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const running = backups.some((b) => b.status === 'running');

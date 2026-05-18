@@ -86,30 +86,38 @@ export function GalleryPage() {
       toast.error('Please add an image');
       return;
     }
-    if (editing) {
-      await updateMutation.mutateAsync({
-        id: editing.id,
-        data: {
+    try {
+      if (editing) {
+        await updateMutation.mutateAsync({
+          id: editing.id,
+          data: {
+            title: form.title.trim(),
+            description: form.description.trim() || undefined,
+            url: imagePreview,
+          },
+        });
+      } else {
+        await createMutation.mutateAsync({
           title: form.title.trim(),
           description: form.description.trim() || undefined,
           url: imagePreview,
-        },
-      });
-    } else {
-      await createMutation.mutateAsync({
-        title: form.title.trim(),
-        description: form.description.trim() || undefined,
-        url: imagePreview,
-        publish: false,
-      });
+          publish: false,
+        });
+      }
+      closeModal();
+    } catch {
+      // Error toast is handled by the mutation hook.
     }
-    closeModal();
   };
 
   const handleDelete = async () => {
     if (deleteId) {
-      await deleteMutation.mutateAsync(deleteId);
-      setDeleteId(null);
+      try {
+        await deleteMutation.mutateAsync(deleteId);
+        setDeleteId(null);
+      } catch {
+        // Error toast is handled by the mutation hook.
+      }
     }
   };
 

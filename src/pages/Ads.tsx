@@ -250,12 +250,16 @@ export function AdsPage() {
 
   const handleCreateCampaign = async () => {
     if (!campaignName.trim()) return;
-    await createCampaignMutation.mutateAsync({
-      name: campaignName.trim(),
-      description: campaignDescription.trim() || undefined,
-    });
-    setCampaignModalOpen(false);
-    resetCampaignForm();
+    try {
+      await createCampaignMutation.mutateAsync({
+        name: campaignName.trim(),
+        description: campaignDescription.trim() || undefined,
+      });
+      setCampaignModalOpen(false);
+      resetCampaignForm();
+    } catch {
+      // Error toast is handled by the mutation hook.
+    }
   };
 
   const handleSaveAd = async () => {
@@ -292,16 +296,20 @@ export function AdsPage() {
       endDate: fromDateInput(adEnd),
     };
 
-    if (editingAd) {
-      await updateAdMutation.mutateAsync({ id: editingAd.id, data: payload });
-    } else {
-      await createAdMutation.mutateAsync({
-        campaignId: selectedCampaignId,
-        ...payload,
-      });
+    try {
+      if (editingAd) {
+        await updateAdMutation.mutateAsync({ id: editingAd.id, data: payload });
+      } else {
+        await createAdMutation.mutateAsync({
+          campaignId: selectedCampaignId,
+          ...payload,
+        });
+      }
+      setAdModalOpen(false);
+      resetAdForm();
+    } catch {
+      // Error toast is handled by the mutation hook.
     }
-    setAdModalOpen(false);
-    resetAdForm();
   };
 
   const tabs: { id: TabId; label: string; icon: string }[] = [
@@ -771,9 +779,13 @@ export function AdsPage() {
         onClose={() => setDeleteCampaignId(null)}
         onConfirm={async () => {
           if (deleteCampaignId) {
-            await deleteCampaignMutation.mutateAsync(deleteCampaignId);
-            setDeleteCampaignId(null);
-            setSelectedCampaignId('');
+            try {
+              await deleteCampaignMutation.mutateAsync(deleteCampaignId);
+              setDeleteCampaignId(null);
+              setSelectedCampaignId('');
+            } catch {
+              // Error toast is handled by the mutation hook.
+            }
           }
         }}
         title="Delete campaign?"
@@ -786,8 +798,12 @@ export function AdsPage() {
         onClose={() => setDeleteAdId(null)}
         onConfirm={async () => {
           if (deleteAdId) {
-            await deleteAdMutation.mutateAsync(deleteAdId);
-            setDeleteAdId(null);
+            try {
+              await deleteAdMutation.mutateAsync(deleteAdId);
+              setDeleteAdId(null);
+            } catch {
+              // Error toast is handled by the mutation hook.
+            }
           }
         }}
         title="Delete ad?"

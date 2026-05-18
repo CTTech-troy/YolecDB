@@ -291,8 +291,12 @@ export function RegistrationsPage() {
         isOpen={confirmDeleteAll}
         onClose={() => setConfirmDeleteAll(false)}
         onConfirm={async () => {
-          await deleteAllMutation.mutateAsync();
-          setConfirmDeleteAll(false);
+          try {
+            await deleteAllMutation.mutateAsync();
+            setConfirmDeleteAll(false);
+          } catch {
+            // Error toast is handled by the mutation hook.
+          }
         }}
         title="Delete all event registrations"
         message="This will permanently remove all event registrations."
