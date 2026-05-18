@@ -211,9 +211,10 @@ export function LoginPage() {
 
         {/* Footer */}
         <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
-          <p>Powered by YolecHub Enterprise</p>
+          <p>Powered by CTTech Agency</p>
         </div>
       </Card>
     </div>
   );
 }
+
