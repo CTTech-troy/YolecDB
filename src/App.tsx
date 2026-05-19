@@ -36,6 +36,9 @@ const RolesPage = lazy(() => import('@/pages/Roles').then((m) => ({ default: m.R
 const AuditLogsPage = lazy(() => import('@/pages/AuditLogs').then((m) => ({ default: m.AuditLogsPage })));
 const GalleryPage = lazy(() => import('@/pages/Gallery').then((m) => ({ default: m.GalleryPage })));
 const GalleryDetailPage = lazy(() => import('@/pages/GalleryDetail').then((m) => ({ default: m.GalleryDetailPage })));
+const EventGalleryManagementPage = lazy(() =>
+  import('@/pages/EventGalleryManagement').then((m) => ({ default: m.EventGalleryManagementPage }))
+);
 const EventLivePage = lazy(() => import('@/pages/EventLive').then((m) => ({ default: m.EventLivePage })));
 const AdsPage = lazy(() => import('@/pages/Ads').then((m) => ({ default: m.AdsPage })));
 const TicketsPage = lazy(() => import('@/pages/Tickets').then((m) => ({ default: m.TicketsPage })));
@@ -287,6 +290,21 @@ function AppContent() {
                       ]}
                     >
                       <GalleryDetailPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/event-gallery"
+                  element={
+                    <ProtectedRoute
+                      anyPermissions={[
+                        PERMISSIONS.MANAGE_MEDIA,
+                        PERMISSIONS.UPLOAD_MEDIA,
+                        PERMISSIONS.MODERATE_COMMENTS,
+                      ]}
+                    >
+                      <EventGalleryManagementPage />
                     </ProtectedRoute>
                   }
                 />

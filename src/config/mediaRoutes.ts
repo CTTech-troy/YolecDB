@@ -33,6 +33,12 @@ export const mediaRoutes: RouteConfig[] = [
     permission: PERMISSIONS.MANAGE_MEDIA,
   },
   {
+    path: '/event-gallery',
+    label: 'Event Gallery Mgmt',
+    icon: 'ri-camera-lens-line',
+    permission: PERMISSIONS.MANAGE_MEDIA,
+  },
+  {
     path: '/testimonials',
     label: 'Announcements',
     icon: 'ri-megaphone-line',

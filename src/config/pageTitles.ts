@@ -18,6 +18,9 @@ export function resolvePageTitle(pathname: string): { section?: string; title: s
   if (pathname.match(/^\/gallery\/[^/]+$/)) {
     return { section: 'Media', title: 'Gallery details' };
   }
+  if (pathname === '/event-gallery') {
+    return { section: 'Media', title: 'Event Gallery Management' };
+  }
   if (pathname.match(/^\/events\/[^/]+\/live$/)) {
     return { section: 'Media', title: 'Live studio' };
   }
