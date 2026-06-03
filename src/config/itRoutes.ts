@@ -1,4 +1,4 @@
-import { RouteConfig } from './routes';
+import type { RouteConfig } from './routes';
 import { PERMISSIONS } from '@/types';
 
 export const itRoutes: RouteConfig[] = [

@@ -112,9 +112,9 @@ export function RolesPage() {
     },
     {
       key: 'permissions',
-      header: 'Permissions',
+      header: 'Access',
       render: (role: Role) => (
-        <span className={tableText.muted}>{role.permissions.length} permissions</span>
+        <span className={tableText.muted}>{role.permissions.length} access rules</span>
       ),
     },
     {
@@ -148,7 +148,7 @@ export function RolesPage() {
     <div className="space-y-6">
       <PageHeader
         title="Roles"
-        description="Manage roles and permissions"
+        description="Manage role presets. Each dashboard user is assigned one role."
         action={
           <PermissionGate permission={PERMISSIONS.MANAGE_ROLES}>
             <div className="flex flex-wrap gap-2">
@@ -218,7 +218,7 @@ export function RolesPage() {
           />
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
-              Permissions
+              Role access rules
             </p>
             <div className="max-h-64 overflow-y-auto rounded-lg border border-slate-200 p-3 dark:border-slate-700">
               <div className="grid gap-2 sm:grid-cols-2">

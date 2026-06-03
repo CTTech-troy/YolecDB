@@ -59,16 +59,25 @@ export interface CreateBlogDto {
 export interface Event {
   id: string;
   title: string;
-  url: string;
+  url?: string;
   date: string;
   description?: string;
   category?: string;
   location?: string;
   eventLifecycle?: 'upcoming' | 'ongoing' | 'past';
-  publish: boolean;
+  publish?: boolean;
   isLive?: boolean;
   registrationEnabled?: boolean;
+  takingResponses?: boolean;
   whatsappLink?: string;
+  slug?: string;
+  qrSlug?: string;
+  qrToken?: string;
+  registrationUrl?: string;
+  qrExpiresAt?: number | null;
+  qrStatus?: 'active' | 'inactive';
+  qrGeneratedAt?: number;
+  qrRegeneratedAt?: number;
   agenda?: EventAgendaItem[];
   speakers?: EventSpeaker[];
   venue?: EventVenue;
@@ -206,14 +215,18 @@ export interface RegistrationFilters {
   eventId?: string;
   blogId?: string;
   q?: string;
+  dateFrom?: number;
+  dateTo?: number;
 }
 
 export interface RegistrationAnalytics {
   total: number;
   byAttendeeType: Record<string, number>;
+  byDay: Array<{ date: string; count: number }>;
   topStates: Array<{ name: string; count: number }>;
   topUniversities: Array<{ name: string; count: number }>;
   topAgencies: Array<{ name: string; count: number }>;
+  eventPerformance?: Array<{ eventId: string; eventTitle: string; count: number }>;
 }
 
 export interface BlogRegistrationWithTitle extends Registration {

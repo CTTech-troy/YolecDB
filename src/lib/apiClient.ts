@@ -45,6 +45,11 @@ function getPayloadMessage(raw: unknown): string {
 
 function parseErrorPayload(raw: unknown, status: number): string {
   const payloadMessage = getPayloadMessage(raw);
+  const code = raw && typeof raw === 'object' ? (raw as Record<string, unknown>).code : undefined;
+
+  if (typeof code === 'string' && code.startsWith('EMAIL_') && payloadMessage) {
+    return payloadMessage;
+  }
 
   if (/already exists/i.test(payloadMessage)) {
     return 'A record with these details already exists.';
@@ -92,6 +97,18 @@ export class NetworkError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'NetworkError';
+  }
+}
+
+export class HttpError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = status;
+    this.code = code;
   }
 }
 
@@ -166,7 +183,7 @@ export class ApiClient {
       const error: ApiError = await response.json().catch(() => ({
         error: `HTTP ${response.status}: ${response.statusText}`,
       }));
-      throw new Error(parseErrorPayload(error, response.status));
+      throw new HttpError(parseErrorPayload(error, response.status), response.status, error.code);
     }
 
     if (response.status === 204) {
@@ -233,7 +250,7 @@ export class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: response.statusText }));
-      throw new Error(parseErrorPayload(error, response.status));
+      throw new HttpError(parseErrorPayload(error, response.status), response.status, error.code);
     }
 
     return response.json();

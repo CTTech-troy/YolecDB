@@ -7,6 +7,8 @@ const ROLE_DESCRIPTIONS: Record<string, string> = {
   ict_team: 'IT operations: health, security, logs, infrastructure',
   MEDIA: 'Content only: blog, events, gallery, announcements',
   media_team: 'Content only: blog, events, gallery, announcements',
+  EVENT_MANAGER: 'Event access only: events, QR links, event registrations, and event analytics',
+  event_manager: 'Event access only: events, QR links, event registrations, and event analytics',
 };
 
 export function getRoleDescription(role?: Pick<Role, 'name' | 'displayName'> | null): string {
@@ -29,6 +31,9 @@ export function roleBadgeClass(roleName?: string): string {
   }
   if (roleName === 'MEDIA' || roleName === 'media_team') {
     return `${base} bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300`;
+  }
+  if (roleName === 'EVENT_MANAGER' || roleName === 'event_manager') {
+    return `${base} bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300`;
   }
   return `${base} bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300`;
 }

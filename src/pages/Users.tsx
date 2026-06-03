@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   useUsers,
   useCreateUser,
+  useResendUserInvite,
   useUpdateUserRole,
   useDeactivateUser,
   useReactivateUser,
@@ -26,12 +27,23 @@ import { tableText, statusBadge } from '@/lib/tableStyles';
 import { formatRoleLabel, getRoleDescription, roleBadgeClass } from '@/lib/roleLabels';
 import { isSuperAdminRole } from '@/lib/roles';
 
-const SYSTEM_ROLE_ORDER = ['SUPER_ADMIN', 'IT_TEAM', 'MEDIA', 'super_admin', 'ict_team', 'media_team'];
+const SYSTEM_ROLE_ORDER = [
+  'SUPER_ADMIN',
+  'IT_TEAM',
+  'MEDIA',
+  'EVENT_MANAGER',
+  'super_admin',
+  'ict_team',
+  'media_team',
+  'event_manager',
+];
 
-function sortSystemRoles(a: Role, b: Role) {
+function sortRoles(a: Role, b: Role) {
   const ai = SYSTEM_ROLE_ORDER.indexOf(a.name);
   const bi = SYSTEM_ROLE_ORDER.indexOf(b.name);
-  return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  const order = (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  if (order !== 0) return order;
+  return a.displayName.localeCompare(b.displayName);
 }
 
 function findRole(roles: Role[], roleId: string) {
@@ -67,17 +79,17 @@ export function UsersPage() {
   const { data, isLoading } = useUsers(page, 20);
   const { data: rolesData } = useRoles(1, 100);
   const createMutation = useCreateUser();
+  const resendInviteMutation = useResendUserInvite();
   const updateRoleMutation = useUpdateUserRole();
   const deactivateMutation = useDeactivateUser();
   const reactivateMutation = useReactivateUser();
   const deleteMutation = useDeleteUser();
 
   const roles = rolesData?.data ?? [];
-  const systemRoleNames = new Set(SYSTEM_ROLE_ORDER);
-  const systemRoles = roles.filter((r) => systemRoleNames.has(r.name)).sort(sortSystemRoles);
+  const sortedRoles = [...roles].sort(sortRoles);
   const roleOptions = [
-    { value: '', label: 'Select a role...' },
-    ...systemRoles.map((r) => ({ value: r.id, label: formatRoleLabel(r) })),
+    { value: '', label: 'Select one role...' },
+    ...sortedRoles.map((r) => ({ value: r.id, label: formatRoleLabel(r) })),
   ];
   const selectedInviteRole = form.roleId ? findRole(roles, form.roleId) : null;
   const selectedEditRole = selectedRoleId ? findRole(roles, selectedRoleId) : null;
@@ -206,6 +218,18 @@ export function UsersPage() {
               Change role
             </Button>
           </PermissionGate>
+          {u.status === 'pending' && (
+            <PermissionGate permission={PERMISSIONS.CREATE_USER}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => resendInviteMutation.mutate(u.uid)}
+                loading={resendInviteMutation.isPending}
+              >
+                Resend invite
+              </Button>
+            </PermissionGate>
+          )}
           <PermissionGate permission={PERMISSIONS.DEACTIVATE_USER}>
             {u.status === 'active' ? (
               <Button
@@ -354,8 +378,8 @@ export function UsersPage() {
             required
           />
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            An email invitation will be sent so they can set their own password. The link expires in
-            24 hours.
+            Each user can have one role only. Choose Event Manager for event-only dashboard access.
+            The invite link expires in 24 hours.
           </p>
           <Select
             label="Role"

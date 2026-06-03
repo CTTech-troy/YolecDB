@@ -12,9 +12,16 @@ export function isItRole(roleName: string | undefined): boolean {
   return n === 'it_team' || n === 'ict_team';
 }
 
+export function isEventRole(roleName: string | undefined): boolean {
+  if (!roleName) return false;
+  const n = roleName.toLowerCase().replace(/\s+/g, '_');
+  return n === 'event_manager';
+}
+
 export function getDefaultHomeRoute(roleName: string | undefined): string {
   if (isSuperAdminRole(roleName)) return '/dashboard';
   if (isMediaRole(roleName)) return '/media';
   if (isItRole(roleName)) return '/it';
+  if (isEventRole(roleName)) return '/events';
   return '/dashboard';
 }

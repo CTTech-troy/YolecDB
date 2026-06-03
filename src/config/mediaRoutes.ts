@@ -1,4 +1,4 @@
-import { RouteConfig } from './routes';
+import type { RouteConfig } from './routes';
 import { PERMISSIONS } from '@/types';
 
 export const mediaRoutes: RouteConfig[] = [
@@ -40,8 +40,8 @@ export const mediaRoutes: RouteConfig[] = [
   },
   {
     path: '/testimonials',
-    label: 'Announcements',
-    icon: 'ri-megaphone-line',
-    permission: PERMISSIONS.MANAGE_ANNOUNCEMENTS,
+    label: 'Testimonials',
+    icon: 'ri-chat-quote-line',
+    permission: PERMISSIONS.MANAGE_TESTIMONIALS,
   },
 ];

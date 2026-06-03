@@ -1,8 +1,9 @@
 import { QueryClient } from '@tanstack/react-query';
-import { NetworkError } from '@/lib/apiClient';
+import { HttpError, NetworkError } from '@/lib/apiClient';
 
 function shouldRetry(failureCount: number, error: unknown): boolean {
   if (failureCount >= 2) return false;
+  if (error instanceof HttpError) return false;
   if (error instanceof NetworkError) return true;
   if (error instanceof Error && error.message.includes('Cannot reach API')) return true;
   return false;

@@ -27,8 +27,12 @@ export const usersApi = {
     email: string;
     displayName: string;
     roleId: string;
-  }): Promise<{ uid: string; inviteSent: boolean }> {
+  }): Promise<{ uid: string; inviteSent: boolean; inviteEmailError?: string }> {
     return apiClient.post('/api/mgmt/users', data);
+  },
+
+  async resendInvite(uid: string): Promise<{ success: boolean; inviteSent: boolean; resendId?: string }> {
+    return apiClient.post(`/api/mgmt/users/${uid}/invite/resend`, {});
   },
 
   /**
