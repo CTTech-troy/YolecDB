@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Bar,
   BarChart,
@@ -33,6 +34,15 @@ const ATTENDEE_TYPES = [
   'Other',
 ];
 
+type RegistrationTab = 'blog' | 'event';
+
+interface EventRegistrationGroup {
+  eventId: string;
+  eventTitle: string;
+  count: number;
+  registrations: Registration[];
+}
+
 function formatDate(ms?: number) {
   if (!ms) return '—';
   try {
@@ -56,7 +66,11 @@ function profSummary(r: Registration) {
 }
 
 export function RegistrationsPage() {
-  const [tab, setTab] = useState<'blog' | 'event'>('event');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamString = searchParams.toString();
+  const [tab, setTab] = useState<RegistrationTab>(() =>
+    searchParams.get('tab') === 'event' ? 'event' : 'blog'
+  );
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [detail, setDetail] = useState<Registration | null>(null);
   const [filters, setFilters] = useState({
@@ -64,20 +78,102 @@ export function RegistrationsPage() {
     state: '',
     city: '',
     q: '',
+    blogId: searchParams.get('blogId') ?? '',
+    eventId: searchParams.get('eventId') ?? '',
   });
 
-  const eventFilters = useMemo(() => ({ ...filters }), [filters]);
-  const blogFilters = useMemo(() => ({ ...filters }), [filters]);
+  const eventFilters = useMemo(
+    () => ({
+      attendeeType: filters.attendeeType,
+      state: filters.state,
+      city: filters.city,
+      q: filters.q,
+      eventId: filters.eventId,
+    }),
+    [filters]
+  );
+  const blogFilters = useMemo(
+    () => ({
+      attendeeType: filters.attendeeType,
+      state: filters.state,
+      city: filters.city,
+      q: filters.q,
+      blogId: filters.blogId,
+    }),
+    [filters]
+  );
+  const activeFilters = tab === 'event' ? eventFilters : blogFilters;
+  const activeTargetId = tab === 'event' ? filters.eventId : filters.blogId;
 
   const { data: blogData, isLoading: blogLoading } = useBlogRegistrations(blogFilters);
   const { data: eventRows, isLoading: eventLoading } = useEventRegistrations(eventFilters);
-  const { data: analytics } = useRegistrationAnalytics(tab);
+  const { data: analytics } = useRegistrationAnalytics(tab, activeTargetId || undefined);
   const deleteEventMutation = useDeleteEventRegistration();
   const deleteAllMutation = useDeleteAllEventRegistrations();
   const exportMutation = useExportRegistrations();
 
   const groups = blogData?.groups ?? [];
   const events = eventRows ?? [];
+  const blogTotal =
+    blogData?.registrations?.length ?? groups.reduce((total, group) => total + group.count, 0);
+  const eventTotal = events.length;
+
+  useEffect(() => {
+    const params = new URLSearchParams(searchParamString);
+    const tabParam = params.get('tab');
+    if (tabParam === 'blog' || tabParam === 'event') {
+      setTab(tabParam);
+    }
+    setFilters((current) => ({
+      ...current,
+      blogId: params.get('blogId') ?? '',
+      eventId: params.get('eventId') ?? '',
+    }));
+  }, [searchParamString]);
+
+  const handleTabChange = (nextTab: RegistrationTab) => {
+    setTab(nextTab);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('tab', nextTab);
+    if (nextTab === 'blog') nextParams.delete('eventId');
+    if (nextTab === 'event') nextParams.delete('blogId');
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const clearTargetFilter = () => {
+    setFilters((current) => ({
+      ...current,
+      blogId: tab === 'blog' ? '' : current.blogId,
+      eventId: tab === 'event' ? '' : current.eventId,
+    }));
+    const nextParams = new URLSearchParams(searchParams);
+    if (tab === 'blog') nextParams.delete('blogId');
+    if (tab === 'event') nextParams.delete('eventId');
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const eventGroups = useMemo<EventRegistrationGroup[]>(() => {
+    const byEvent: Record<string, EventRegistrationGroup> = {};
+
+    for (const registration of events) {
+      const eventId = registration.eventId || 'unknown';
+      const eventTitle = registration.eventTitle || 'Unknown event';
+
+      if (!byEvent[eventId]) {
+        byEvent[eventId] = {
+          eventId,
+          eventTitle,
+          count: 0,
+          registrations: [],
+        };
+      }
+
+      byEvent[eventId].count += 1;
+      byEvent[eventId].registrations.push(registration);
+    }
+
+    return Object.values(byEvent);
+  }, [events]);
 
   const chartData = analytics
     ? Object.entries(analytics.byAttendeeType).map(([name, count]) => ({ name, count }))
@@ -93,7 +189,7 @@ export function RegistrationsPage() {
             variant="ghost"
             icon="ri-download-line"
             loading={exportMutation.isPending}
-            onClick={() => exportMutation.mutate({ scope: tab, filters })}
+            onClick={() => exportMutation.mutate({ scope: tab, filters: activeFilters })}
           >
             Export CSV
           </Button>
@@ -210,21 +306,35 @@ export function RegistrationsPage() {
       )}
 
       <div className="flex gap-2 border-b border-slate-200 dark:border-slate-700">
-        {(['blog', 'event'] as const).map((t) => (
+        {([
+          { value: 'blog', label: `Blog (${blogTotal})` },
+          { value: 'event', label: `Event (${eventTotal})` },
+        ] as const).map((item) => (
           <button
-            key={t}
+            key={item.value}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => handleTabChange(item.value)}
             className={`px-4 py-2 text-sm font-medium capitalize ${
-              tab === t
+              tab === item.value
                 ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400'
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >
-            {t}
+            {item.label}
           </button>
         ))}
       </div>
+
+      {activeTargetId && (
+        <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Showing users for the selected {tab}.
+          </p>
+          <Button size="sm" variant="secondary" onClick={clearTargetFilter}>
+            Show all {tab} users
+          </Button>
+        </Card>
+      )}
 
       {tab === 'blog' && (
         <>
@@ -258,16 +368,22 @@ export function RegistrationsPage() {
             </PermissionGate>
           </div>
           {eventLoading && <p className="text-slate-500">Loading event registrations…</p>}
-          {!eventLoading && events.length === 0 && (
+          {!eventLoading && eventGroups.length === 0 && (
             <p className="text-slate-500">No event registrations match your filters.</p>
           )}
-          {events.length > 0 && (
-            <RegTable
-              rows={events}
-              onDetail={setDetail}
-              onDelete={(id) => deleteEventMutation.mutate(id)}
-            />
-          )}
+          {eventGroups.map((g) => (
+            <section key={g.eventId} className="dashboard-table-section">
+              <div className="dashboard-table-section-header">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{g.eventTitle}</h2>
+                <p className="text-sm text-slate-600">{g.count} registration(s)</p>
+              </div>
+              <RegTable
+                rows={g.registrations}
+                onDetail={setDetail}
+                onDelete={(id) => deleteEventMutation.mutate(id)}
+              />
+            </section>
+          ))}
         </>
       )}
 

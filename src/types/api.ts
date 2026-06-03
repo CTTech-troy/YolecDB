@@ -172,6 +172,7 @@ export interface Registration {
   id: string;
   blogId?: string;
   eventId?: string;
+  eventTitle?: string;
   fullName?: string;
   name?: string;
   email: string;

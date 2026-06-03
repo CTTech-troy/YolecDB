@@ -258,6 +258,20 @@ export function BlogsPage() {
                       Registration
                     </Button>
                   </PermissionGate>
+                  <PermissionGate permission={PERMISSIONS.VIEW_REGISTRATIONS}>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="w-full"
+                      onClick={() =>
+                        navigate(
+                          `/blog-registrations?tab=blog&blogId=${encodeURIComponent(blog.id)}`
+                        )
+                      }
+                    >
+                      View users
+                    </Button>
+                  </PermissionGate>
                   <PermissionGate permission={PERMISSIONS.DELETE_POST}>
                     <Button
                       size="sm"
@@ -405,4 +419,3 @@ export function BlogsPage() {
     </div>
   );
 }
-

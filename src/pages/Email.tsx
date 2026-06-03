@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { ChangeEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -32,6 +32,14 @@ const SOURCE_OPTIONS = [
   { value: 'blog', label: 'Blog registration' },
 ];
 
+const MAX_CUSTOM_HTML_BYTES = 500_000;
+
+type BulkSendStatus = 'idle' | 'sending' | 'success' | 'error';
+
+function sourceLabel(source: EmailSubscriberSource) {
+  return SOURCE_OPTIONS.find((option) => option.value === source)?.label || 'Selected audience';
+}
+
 function defaultParams(templateId: EmailTemplateId): Record<string, unknown> {
   switch (templateId) {
     case 'event_registration':
@@ -50,6 +58,18 @@ function defaultParams(templateId: EmailTemplateId): Record<string, unknown> {
         buttonText: 'Read more',
         buttonLink: 'https://yolechub.com.ng',
       };
+    case 'campaign':
+      return {
+        title: 'Hello from YolecHub',
+        content:
+          "We're thrilled to invite you to our annual gathering of innovators, builders, and visionaries. Join us for a full day of talks, workshops, and networking.",
+        badgeText: 'Conference Reminder',
+        eventName: 'YolecHub Summit 2026',
+        eventDateTime: 'Saturday, July 12, 2026 - 9:00 AM WAT',
+        location: 'Lagos, Nigeria',
+        buttonText: 'Register now',
+        buttonLink: 'https://yolechub.com.ng',
+      };
     default:
       return {
         title: 'Hello from YolecHub',
@@ -62,14 +82,15 @@ function defaultParams(templateId: EmailTemplateId): Record<string, unknown> {
 
 export function EmailPage() {
   const queryClient = useQueryClient();
+  const htmlFileInputRef = useRef<HTMLInputElement | null>(null);
   const [tab, setTab] = useState<Tab>('audience');
   const [page, setPage] = useState(1);
   const [sourceFilter, setSourceFilter] = useState<EmailSubscriberSource>('all');
   const [search, setSearch] = useState('');
 
-  const [templateId, setTemplateId] = useState<EmailTemplateId>('newsletter');
+  const [templateId, setTemplateId] = useState<EmailTemplateId>('campaign');
   const [templateParamsJson, setTemplateParamsJson] = useState(
-    () => JSON.stringify(defaultParams('newsletter'), null, 2)
+    () => JSON.stringify(defaultParams('campaign'), null, 2)
   );
   const [subject, setSubject] = useState('');
   const [singleTo, setSingleTo] = useState('');
@@ -78,6 +99,12 @@ export function EmailPage() {
   const [bulkSource, setBulkSource] = useState<EmailSubscriberSource>('all');
   const [previewHtml, setPreviewHtml] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [htmlFileName, setHtmlFileName] = useState('');
+  const [bulkProgress, setBulkProgress] = useState(0);
+  const [bulkStatus, setBulkStatus] = useState<BulkSendStatus>('idle');
+  const [bulkStartedAt, setBulkStartedAt] = useState<number | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ success: number; failed: number } | null>(null);
+  const [bulkError, setBulkError] = useState('');
 
   const [campaignName, setCampaignName] = useState('');
   const [campaignSubject, setCampaignSubject] = useState('');
@@ -106,6 +133,15 @@ export function EmailPage() {
     enabled: tab === 'campaigns',
   });
 
+  const { data: bulkAudience } = useQuery({
+    queryKey: ['email', 'bulk-audience-count', bulkSource],
+    queryFn: () => emailApi.listSubscribers(1, 1, bulkSource),
+    enabled: tab === 'compose',
+  });
+
+  const bulkAudienceCount =
+    bulkAudience?.total ?? (bulkSource === 'all' ? stats?.activeSubscribers : undefined);
+
   const syncMutation = useMutation({
     mutationFn: () => emailApi.syncSubscribers(),
     onSuccess: (r) => {
@@ -123,8 +159,21 @@ export function EmailPage() {
     }
   }, [templateParamsJson]);
 
+  const customHtmlForSend = () => {
+    if (templateId !== 'custom') return undefined;
+    const html = customHtml.trim();
+    if (!html) throw new Error('Add or upload custom HTML before sending');
+    return html;
+  };
+
+  const requireSubject = () => {
+    const cleanSubject = subject.trim();
+    if (!cleanSubject) throw new Error('Subject is required');
+    return cleanSubject;
+  };
+
   const previewMutation = useMutation({
-    mutationFn: () => emailApi.preview(templateId, parseParams()),
+    mutationFn: () => emailApi.preview(templateId, parseParams(), customHtmlForSend()),
     onSuccess: (r) => {
       setPreviewHtml(r.html);
       setShowPreview(true);
@@ -137,10 +186,10 @@ export function EmailPage() {
       emailApi.sendSingle({
         to: singleTo,
         toName: singleName || undefined,
-        subject,
+        subject: requireSubject(),
         templateId,
         templateParams: parseParams(),
-        html: templateId === 'custom' ? customHtml : undefined,
+        html: customHtmlForSend(),
       }),
     onSuccess: () => toast.success('Email sent'),
     onError: (e: Error) => toast.error(e.message),
@@ -149,10 +198,10 @@ export function EmailPage() {
   const sendTestMutation = useMutation({
     mutationFn: () =>
       emailApi.sendTest({
-        subject,
+        subject: requireSubject(),
         templateId,
         templateParams: parseParams(),
-        html: templateId === 'custom' ? customHtml : undefined,
+        html: customHtmlForSend(),
       }),
     onSuccess: () => toast.success('Test email sent to your account'),
     onError: (e: Error) => toast.error(e.message),
@@ -161,15 +210,32 @@ export function EmailPage() {
   const sendBulkMutation = useMutation({
     mutationFn: () =>
       emailApi.sendBulk({
-        subject,
+        subject: requireSubject(),
         templateId,
         templateParams: parseParams(),
         source: bulkSource,
-        html: templateId === 'custom' ? customHtml : undefined,
+        html: customHtmlForSend(),
       }),
-    onSuccess: (r: { success: number; failed: number }) =>
-      toast.success(`Sent ${r.success}, failed ${r.failed}`),
-    onError: (e: Error) => toast.error(e.message),
+    onMutate: () => {
+      setBulkProgress(8);
+      setBulkStatus('sending');
+      setBulkStartedAt(Date.now());
+      setBulkResult(null);
+      setBulkError('');
+    },
+    onSuccess: (r: { success: number; failed: number }) => {
+      setBulkProgress(100);
+      setBulkStatus('success');
+      setBulkResult(r);
+      toast.success(`Sent ${r.success}, failed ${r.failed}`);
+      queryClient.invalidateQueries({ queryKey: ['email'] });
+    },
+    onError: (e: Error) => {
+      setBulkProgress(100);
+      setBulkStatus('error');
+      setBulkError(e.message || 'Bulk send failed');
+      toast.error(e.message);
+    },
   });
 
   const createCampaignMutation = useMutation({
@@ -179,6 +245,7 @@ export function EmailPage() {
         subject: campaignSubject,
         templateId,
         templateParams: parseParams(),
+        html: customHtmlForSend(),
         audienceSource: campaignAudience,
         scheduledAt: scheduleAt ? new Date(scheduleAt).getTime() : undefined,
       }),
@@ -203,6 +270,56 @@ export function EmailPage() {
     setTemplateParamsJson(JSON.stringify(defaultParams(templateId), null, 2));
   }, [templateId]);
 
+  useEffect(() => {
+    if (!sendBulkMutation.isPending) return undefined;
+
+    const timer = window.setInterval(() => {
+      setBulkProgress((current) => {
+        if (current >= 94) return current;
+        const nextStep = bulkAudienceCount && bulkAudienceCount > 100 ? 1 : 2;
+        return Math.min(94, current + nextStep);
+      });
+    }, 900);
+
+    return () => window.clearInterval(timer);
+  }, [bulkAudienceCount, sendBulkMutation.isPending]);
+
+  const handleBulkSend = () => {
+    try {
+      requireSubject();
+      parseParams();
+      customHtmlForSend();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Bulk send is not ready');
+      return;
+    }
+    sendBulkMutation.mutate();
+  };
+
+  const handleHtmlFileSelect = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.html') && file.type !== 'text/html') {
+      toast.error('Please choose an .html file');
+      return;
+    }
+    if (file.size > MAX_CUSTOM_HTML_BYTES) {
+      toast.error('HTML file must be 500KB or smaller');
+      return;
+    }
+    try {
+      const text = await file.text();
+      setCustomHtml(text);
+      setHtmlFileName(file.name);
+      setPreviewHtml('');
+      setShowPreview(false);
+      toast.success('HTML file loaded');
+    } catch {
+      toast.error('Could not read HTML file');
+    }
+  };
+
   const handleExport = async () => {
     try {
       const blob = await emailApi.exportCsv(sourceFilter);
@@ -216,6 +333,27 @@ export function EmailPage() {
       toast.error(e instanceof Error ? e.message : 'Export failed');
     }
   };
+
+  const showBulkProgress = bulkStatus !== 'idle';
+  const bulkElapsedSeconds = bulkStartedAt
+    ? Math.max(0, Math.floor((Date.now() - bulkStartedAt) / 1000))
+    : 0;
+  const bulkAudienceText =
+    typeof bulkAudienceCount === 'number'
+      ? `${bulkAudienceCount} recipient${bulkAudienceCount === 1 ? '' : 's'}`
+      : 'selected recipients';
+  const bulkProgressTitle =
+    bulkStatus === 'sending'
+      ? `Sending to ${bulkAudienceText}`
+      : bulkStatus === 'success'
+        ? 'Bulk send complete'
+        : 'Bulk send stopped';
+  const bulkProgressDetail =
+    bulkStatus === 'sending'
+      ? `Processing ${sourceLabel(bulkSource).toLowerCase()} for ${bulkElapsedSeconds}s`
+      : bulkStatus === 'success' && bulkResult
+        ? `Sent ${bulkResult.success}, failed ${bulkResult.failed}`
+        : bulkError;
 
   const subscriberColumns = [
     {
@@ -389,13 +527,42 @@ export function EmailPage() {
               />
             </div>
             {templateId === 'custom' && (
-              <div>
-                <label className="mb-1.5 block text-sm font-medium">Custom HTML</label>
+              <div className="space-y-3">
+                <input
+                  ref={htmlFileInputRef}
+                  type="file"
+                  accept=".html,text/html"
+                  className="hidden"
+                  onChange={handleHtmlFileSelect}
+                />
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="block text-sm font-medium">Custom HTML</label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    icon="ri-file-upload-line"
+                    onClick={() => htmlFileInputRef.current?.click()}
+                  >
+                    Upload HTML
+                  </Button>
+                </div>
+                {htmlFileName && (
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Loaded: {htmlFileName}
+                  </p>
+                )}
                 <textarea
                   value={customHtml}
-                  onChange={(e) => setCustomHtml(e.target.value)}
-                  rows={6}
+                  onChange={(e) => {
+                    setCustomHtml(e.target.value);
+                    setHtmlFileName('');
+                    setPreviewHtml('');
+                    setShowPreview(false);
+                  }}
+                  rows={14}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs dark:border-slate-600 dark:bg-slate-900"
+                  placeholder="Paste a full HTML email here, or upload an .html file."
                 />
               </div>
             )}
@@ -426,9 +593,49 @@ export function EmailPage() {
               onChange={(e) => setBulkSource(e.target.value as EmailSubscriberSource)}
               options={SOURCE_OPTIONS}
             />
-            <Button onClick={() => sendBulkMutation.mutate()} loading={sendBulkMutation.isPending} icon="ri-mail-send-line">
-              Send bulk
+            <Button
+              onClick={handleBulkSend}
+              loading={sendBulkMutation.isPending}
+              loadingText="Sending..."
+              icon="ri-mail-send-line"
+            >
+              {bulkSource === 'all' ? 'Send to all emails' : 'Send bulk'}
             </Button>
+            {showBulkProgress && (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
+                      {bulkProgressTitle}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {bulkProgressDetail}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                    {bulkProgress}%
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={bulkProgress}
+                  className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
+                >
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      bulkStatus === 'error'
+                        ? 'bg-red-500'
+                        : bulkStatus === 'success'
+                          ? 'bg-emerald-500'
+                          : 'bg-indigo-600'
+                    }`}
+                    style={{ width: `${bulkProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </Card>
           <Card className="p-6">
             <h2 className="mb-4 text-lg font-semibold">Preview</h2>

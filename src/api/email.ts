@@ -102,10 +102,11 @@ export const emailApi = {
     return res.blob();
   },
 
-  preview(templateId: EmailTemplateId, templateParams: Record<string, unknown>) {
+  preview(templateId: EmailTemplateId, templateParams: Record<string, unknown>, html?: string) {
     return apiClient.post<{ html: string }>('/api/mgmt/email/preview', {
       templateId,
       templateParams,
+      html,
     });
   },
 
@@ -156,6 +157,7 @@ export const emailApi = {
     subject: string;
     templateId: EmailTemplateId;
     templateParams?: Record<string, unknown>;
+    html?: string;
     audienceSource?: EmailSubscriberSource;
     scheduledAt?: number;
   }) {

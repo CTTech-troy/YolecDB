@@ -34,6 +34,10 @@ function registerUrl(id: string) {
   return siteBase ? `${siteBase}/register/${id}` : `/register/${id}`;
 }
 
+function eventRegistrationsUrl(id: string) {
+  return `/blog-registrations?tab=event&eventId=${encodeURIComponent(id)}`;
+}
+
 const emptyForm = () => ({
   title: '',
   description: '',
@@ -219,6 +223,13 @@ export function EventsPage() {
               </Button>
             </Link>
           </PermissionGate>
+          <PermissionGate permission={PERMISSIONS.VIEW_REGISTRATIONS}>
+            <Link to={eventRegistrationsUrl(event.id)}>
+              <Button size="sm" variant="secondary" icon="ri-group-line">
+                View users
+              </Button>
+            </Link>
+          </PermissionGate>
           <PermissionGate permission={PERMISSIONS.EDIT_EVENT}>
             <Button size="sm" variant="ghost" onClick={() => openEdit(event)} icon="ri-edit-line">
               Edit
@@ -254,7 +265,7 @@ export function EventsPage() {
           </PermissionGate>
         </div>
       ),
-      width: '280px',
+      width: '340px',
     },
   ];
 
